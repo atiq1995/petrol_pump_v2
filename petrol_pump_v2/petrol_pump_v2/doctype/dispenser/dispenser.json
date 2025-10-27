@@ -1,0 +1,59 @@
+{
+ "doctype": "DocType",
+ "module": "Petrol Pump V2",
+ "name": "Dispenser",
+ "is_submittable": 0,
+ "autoname": "naming_series:",
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "DISP-",
+   "default": "DISP-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "dispenser_name",
+   "fieldtype": "Data",
+   "label": "Dispenser Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "petrol_pump",
+   "fieldtype": "Link",
+   "label": "Petrol Pump",
+   "options": "Petrol Pump",
+   "reqd": 1
+  },
+  {
+   "fieldname": "make",
+   "fieldtype": "Data",
+   "label": "Make"
+  },
+  {
+   "fieldname": "model",
+   "fieldtype": "Data",
+   "label": "Model"
+  },
+  {
+   "fieldname": "nozzles",
+   "fieldtype": "Table",
+   "label": "Nozzles",
+   "options": "Dispenser Nozzle Detail"
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "default": 1
+  }
+ ],
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "select": 1}
+ ],
+ "track_changes": 1,
+ "unique": [
+  ["petrol_pump", "dispenser_name"]
+ ]
+}

@@ -1,0 +1,33 @@
+{
+ "doctype": "DocType",
+ "module": "Petrol Pump V2",
+ "name": "Petrol Pump", 
+ "is_submittable": 0,
+ "title_field": "petrol_pump_name",
+ "autoname": "field:petrol_pump_name",
+ "fields": [
+  {
+   "fieldname": "petrol_pump_name",
+   "fieldtype": "Data",
+   "label": "Petrol Pump Name",
+   "reqd": 1
+  },
+  {
+   "fieldname": "company",
+   "fieldtype": "Link",
+   "label": "Company",
+   "options": "Company",
+   "reqd": 1
+  },
+  {
+   "fieldname": "is_active", 
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "default": 1
+  }
+ ],
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1}
+ ],
+ "track_changes": 1
+}

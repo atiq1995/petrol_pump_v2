@@ -1,0 +1,40 @@
+{
+ "doctype": "DocType",
+ "module": "Petrol Pump V2",
+ "name": "Day Closing",
+ "is_submittable": 1,
+ "autoname": "naming_series:",
+ "title_field": "reading_date",
+ "fields": [
+  {"fieldname": "naming_series", "fieldtype": "Select", "label": "Naming Series", "options": "DC-", "default": "DC-", "reqd": 1},
+  {"fieldname": "reading_date", "fieldtype": "Date", "label": "Reading Date", "reqd": 1, "default": "Today"},
+  {"fieldname": "petrol_pump", "fieldtype": "Link", "label": "Petrol Pump", "options": "Petrol Pump", "reqd": 1},
+  {"fieldname": "employee", "fieldtype": "Link", "label": "Employee", "options": "Employee"},
+  {"fieldname": "nozzle_readings", "fieldtype": "Table", "label": "Nozzle Readings", "options": "Nozzle Reading Detail", "reqd": 1},
+  {"fieldname": "credit_sales_liters", "fieldtype": "Float", "label": "Credit Sales (Liters)", "description": "Total liters sold on credit for the day"},
+  {"fieldname": "available_stock", "fieldtype": "Small Text", "label": "Available Stock (by Tank)", "read_only": 1, "description": "Snapshot of current stock per tank for this pump"},
+  {"fieldname": "section_break_sales", "fieldtype": "Section Break", "label": "Sales Summary"},
+  {"fieldname": "total_sales", "fieldtype": "Currency", "label": "Total Sales", "read_only": 1},
+  {"fieldname": "total_liters", "fieldtype": "Float", "label": "Total Liters", "read_only": 1},
+  {"fieldname": "section_break_cash", "fieldtype": "Section Break", "label": "Payment Collection"},
+  {"fieldname": "cash_amount", "fieldtype": "Currency", "label": "Cash Collected", "description": "Total cash received from customers"},
+  {"fieldname": "card_amount", "fieldtype": "Currency", "label": "Card/POS Amount", "description": "Total card payments received"},
+  {"fieldname": "column_break_cash", "fieldtype": "Column Break"},
+  {"fieldname": "credit_amount", "fieldtype": "Currency", "label": "Credit Sales Amount", "description": "Total sales on credit (not collected)"},
+  {"fieldname": "section_break_reconciliation", "fieldtype": "Section Break", "label": "Reconciliation"},
+  {"fieldname": "total_payments_received", "fieldtype": "Currency", "label": "Total Payments Received", "read_only": 1, "description": "Cash + Card"},
+  {"fieldname": "expected_collection", "fieldtype": "Currency", "label": "Expected Collection", "read_only": 1, "description": "Total Sales - Credit Sales"},
+  {"fieldname": "column_break_variance", "fieldtype": "Column Break"},
+  {"fieldname": "cash_variance", "fieldtype": "Currency", "label": "Cash Variance", "read_only": 1, "description": "Difference between expected and actual collection"},
+  {"fieldname": "section_break_references", "fieldtype": "Section Break", "label": "Transaction References", "collapsible": 1},
+  {"fieldname": "stock_entry_ref", "fieldtype": "Link", "label": "Stock Entry Reference", "options": "Stock Entry", "read_only": 1, "description": "Auto-created Stock Entry for fuel consumption"},
+  {"fieldname": "sales_invoice_ref", "fieldtype": "Link", "label": "Sales Invoice Reference", "options": "Sales Invoice", "read_only": 1, "description": "Auto-created Sales Invoice for daily sales"},
+  {"fieldname": "column_break_ref", "fieldtype": "Column Break"},
+  {"fieldname": "payment_entry_ref", "fieldtype": "Link", "label": "Payment Entry Reference", "options": "Payment Entry", "read_only": 1, "description": "Auto-created Payment Entry for cash collection"},
+  {"fieldname": "workflow_state", "fieldtype": "Select", "label": "Approval Status", "options": "Draft\nPending Approval\nApproved\nRejected", "default": "Draft", "read_only": 1}
+ ],
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "amend": 1}
+ ],
+ "track_changes": 1
+}

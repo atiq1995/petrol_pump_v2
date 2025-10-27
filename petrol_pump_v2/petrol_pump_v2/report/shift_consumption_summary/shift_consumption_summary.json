@@ -1,0 +1,8 @@
+{
+	"doctype": "Report",
+	"name": "Shift Consumption Summary",
+	"ref_doctype": "Shift Reading",
+	"report_type": "Script Report",
+	"is_standard": "Yes",
+	"module": "Petrol Pump V2"
+}

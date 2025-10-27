@@ -1,0 +1,54 @@
+import frappe
+from frappe.model.document import Document
+from frappe.utils import flt
+from erpnext.stock.utils import get_stock_balance
+
+class FuelTank(Document):
+    def validate(self):
+        self.validate_warehouse_and_fuel_type()
+        self.update_current_stock()
+    
+    def validate_warehouse_and_fuel_type(self):
+        """Validate that warehouse and fuel type are properly configured"""
+        if self.warehouse:
+            # Check if warehouse exists
+            if not frappe.db.exists("Warehouse", self.warehouse):
+                frappe.throw(f"Warehouse {self.warehouse} does not exist")
+        
+        if self.fuel_type:
+            # Check if fuel type (item) exists
+            if not frappe.db.exists("Item", self.fuel_type):
+                frappe.msgprint(
+                    f"Item {self.fuel_type} does not exist. Please create it or ensure Fuel Type is properly configured.",
+                    indicator="orange",
+                    alert=True
+                )
+    
+    def update_current_stock(self):
+        """Update current stock from warehouse bin with proper error handling"""
+        if not self.warehouse or not self.fuel_type:
+            self.current_stock = 0
+            return
+        
+        try:
+            # Use ERPNext utility function for accurate stock balance
+            stock_qty = get_stock_balance(
+                item_code=self.fuel_type,
+                warehouse=self.warehouse
+            )
+            self.current_stock = flt(stock_qty)
+            
+        except Exception as e:
+            error_msg = f"Error updating fuel tank stock for {self.name}: {str(e)}"
+            frappe.log_error(error_msg, "Fuel Tank Stock Update Error")
+            
+            # Show user-friendly message
+            frappe.msgprint(
+                f"Could not fetch current stock. Please ensure Warehouse '{self.warehouse}' and Item '{self.fuel_type}' are properly configured. "
+                f"Error: {str(e)}",
+                indicator="red",
+                alert=True
+            )
+            
+            # Set to 0 but don't silently fail
+            self.current_stock = 0

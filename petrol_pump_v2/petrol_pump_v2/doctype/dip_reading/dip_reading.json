@@ -1,0 +1,73 @@
+{
+ "doctype": "DocType",
+ "module": "Petrol Pump V2",
+ "custom": 0,
+ "name": "Dip Reading",
+ "is_submittable": 1,
+ "autoname": "naming_series:",
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "DIP-",
+   "default": "DIP-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "reading_date",
+   "fieldtype": "Date",
+   "label": "Reading Date",
+   "reqd": 1,
+   "default": "Today"
+  },
+  {
+   "fieldname": "petrol_pump",
+   "fieldtype": "Link",
+   "label": "Petrol Pump",
+   "options": "Petrol Pump",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fuel_tank",
+   "fieldtype": "Link",
+   "label": "Fuel Tank",
+   "options": "Fuel Tank",
+   "reqd": 1
+  },
+  {
+   "fieldname": "measured_dip",
+   "fieldtype": "Float",
+   "label": "Measured Dip (Liters)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "system_stock",
+   "fieldtype": "Float",
+   "label": "System Stock (Liters)",
+   "read_only": 1
+  },
+  {
+   "fieldname": "difference",
+   "fieldtype": "Float",
+   "label": "Difference",
+   "read_only": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  },
+  {
+   "fieldname": "stock_reconciliation_ref",
+   "fieldtype": "Link",
+   "label": "Stock Reconciliation Reference",
+   "options": "Stock Reconciliation",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "amend": 1, "select": 1}
+ ],
+ "track_changes": 1
+}

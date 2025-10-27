@@ -1,0 +1,87 @@
+{
+ "actions": [],
+ "allow_rename": 1,
+ "autoname": "format:FTD-{#####}",
+ "creation": "2024-01-01 00:00:00.000000",
+ "default_view": "List",
+ "doctype": "DocType",
+ "editable_grid": 1,
+ "engine": "InnoDB",
+ "field_order": [
+  "dispenser",
+  "nozzle_number",
+  "fuel_type",
+  "test_liters",
+  "rate",
+  "amount",
+  "test_result",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "fieldname": "dispenser",
+   "fieldtype": "Link",
+   "label": "Dispenser",
+   "options": "Dispenser",
+   "reqd": 1
+  },
+  {
+   "fieldname": "nozzle_number",
+   "fieldtype": "Select",
+   "label": "Nozzle Number",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fuel_type",
+   "fieldtype": "Link",
+   "label": "Fuel Type",
+   "options": "Fuel Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "test_liters",
+   "fieldtype": "Float",
+   "label": "Test Liters",
+   "reqd": 1,
+   "default": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "label": "Rate per Liter",
+   "read_only": 1
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "read_only": 1
+  },
+  {
+   "fieldname": "test_result",
+   "fieldtype": "Select",
+   "label": "Test Result",
+   "options": "Pass\nFail\nPending",
+   "default": "Pending"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "index_web_pages_for_search": 1,
+ "istable": 1,
+ "links": [],
+ "modified": "2024-01-01 00:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Petrol Pump V2",
+ "name": "Fuel Testing Detail",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "track_changes": 1
+}

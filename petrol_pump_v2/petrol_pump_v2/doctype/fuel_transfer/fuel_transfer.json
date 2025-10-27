@@ -1,0 +1,81 @@
+{
+ "doctype": "DocType",
+ "module": "Petrol Pump V2",
+ "name": "Fuel Transfer",
+ "is_submittable": 1,
+ "autoname": "naming_series:",
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "FTRN-",
+   "default": "FTRN-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "transfer_date",
+   "fieldtype": "Datetime",
+   "label": "Transfer Date",
+   "reqd": 1,
+   "default": "Now"
+  },
+  {
+   "fieldname": "from_petrol_pump",
+   "fieldtype": "Link",
+   "label": "From Petrol Pump",
+   "options": "Petrol Pump",
+   "reqd": 1
+  },
+  {
+   "fieldname": "from_fuel_tank",
+   "fieldtype": "Link",
+   "label": "From Fuel Tank",
+   "options": "Fuel Tank",
+   "reqd": 1
+  },
+  {
+   "fieldname": "to_petrol_pump",
+   "fieldtype": "Link",
+   "label": "To Petrol Pump",
+   "options": "Petrol Pump",
+   "reqd": 1
+  },
+  {
+   "fieldname": "to_fuel_tank",
+   "fieldtype": "Link",
+   "label": "To Fuel Tank",
+   "options": "Fuel Tank",
+   "reqd": 1
+  },
+  {
+   "fieldname": "fuel_type",
+   "fieldtype": "Link",
+   "label": "Fuel Type",
+   "options": "Fuel Type",
+   "read_only": 1
+  },
+  {
+   "fieldname": "quantity",
+   "fieldtype": "Float",
+   "label": "Quantity (Liters)",
+   "reqd": 1
+  },
+  {
+   "fieldname": "vehicle_number",
+   "fieldtype": "Data",
+   "label": "Vehicle Number"
+  },
+  {
+   "fieldname": "stock_entry_ref",
+   "fieldtype": "Link",
+   "label": "Stock Entry Reference",
+   "options": "Stock Entry",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "amend": 1, "select": 1}
+ ],
+ "track_changes": 1
+}

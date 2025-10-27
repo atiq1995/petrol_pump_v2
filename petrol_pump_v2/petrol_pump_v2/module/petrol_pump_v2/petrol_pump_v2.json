@@ -1,0 +1,16 @@
+{
+ "app_name": "petrol_pump_v2",
+ "app_title": "Petrol Pump V2",
+ "app_version": "1.0.0",
+ "app_publisher": "Petrol Pump V2",
+ "app_description": "Comprehensive Petrol Pump Management System",
+ "app_icon": "octicon octicon-file-directory",
+ "app_color": "grey",
+ "app_email": "admin@petrolpump.com",
+ "app_license": "MIT",
+ "fixtures": [
+  "Custom Field",
+  "Custom Script",
+  "Report"
+ ]
+}

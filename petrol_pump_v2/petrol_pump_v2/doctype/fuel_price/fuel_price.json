@@ -1,0 +1,57 @@
+{
+    "doctype": "DocType",
+    "module": "Petrol Pump V2",
+    "name": "Fuel Price",
+    "is_submittable": 0,
+    "autoname": "naming_series:",
+    "fields": [
+     {
+      "fieldname": "naming_series",
+      "fieldtype": "Select",
+      "label": "Naming Series",
+      "options": "FPRICE-",
+      "default": "FPRICE-",
+      "reqd": 1
+     },
+     {
+      "fieldname": "fuel_type",
+      "fieldtype": "Link",
+      "label": "Fuel Type",
+      "options": "Fuel Type",
+      "reqd": 1
+     },
+     {
+      "fieldname": "price_per_liter",
+      "fieldtype": "Currency",
+      "label": "Price Per Liter",
+      "reqd": 1
+     },
+     {
+      "fieldname": "effective_from",
+      "fieldtype": "Datetime",
+      "label": "Effective From",
+      "reqd": 1,
+      "default": "Now"
+     },
+     {
+      "fieldname": "is_active",
+      "fieldtype": "Check",
+      "label": "Is Active",
+      "default": 1
+     }
+    ],
+    "permissions": [
+     {
+      "role": "System Manager",
+      "read": 1,
+      "write": 1,
+      "create": 1,
+      "delete": 1,
+      "submit": 1,
+      "cancel": 1,
+      "amend": 1
+     }
+    ],
+    "track_changes": 1
+   }
+   
