@@ -1,0 +1,17 @@
+{
+ "add_total_row": 1,
+ "creation": "2025-01-27 00:00:00.000000",
+ "doctype": "Report",
+ "is_standard": "Yes",
+ "module": "Petrol Pump V2",
+ "name": "Pump Performance Comparison",
+ "ref_doctype": "Petrol Pump",
+ "report_name": "Pump Performance Comparison",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ]
+}
+

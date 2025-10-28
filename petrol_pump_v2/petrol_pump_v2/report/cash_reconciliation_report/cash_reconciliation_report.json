@@ -1,0 +1,20 @@
+{
+ "add_total_row": 1,
+ "creation": "2025-01-27 00:00:00.000000",
+ "doctype": "Report",
+ "is_standard": "Yes",
+ "module": "Petrol Pump V2",
+ "name": "Cash Reconciliation Report",
+ "ref_doctype": "Day Closing",
+ "report_name": "Cash Reconciliation Report",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  },
+  {
+   "role": "Accounts Manager"
+  }
+ ]
+}
+

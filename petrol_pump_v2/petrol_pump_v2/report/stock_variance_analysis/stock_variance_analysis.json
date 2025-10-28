@@ -1,0 +1,17 @@
+{
+ "add_total_row": 1,
+ "creation": "2025-01-27 00:00:00.000000",
+ "doctype": "Report",
+ "is_standard": "Yes",
+ "module": "Petrol Pump V2",
+ "name": "Stock Variance Analysis",
+ "ref_doctype": "Dip Reading",
+ "report_name": "Stock Variance Analysis",
+ "report_type": "Script Report",
+ "roles": [
+  {
+   "role": "System Manager"
+  }
+ ]
+}
+
