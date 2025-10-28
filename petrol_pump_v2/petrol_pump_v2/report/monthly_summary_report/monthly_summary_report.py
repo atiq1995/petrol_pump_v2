@@ -79,7 +79,7 @@ def get_data(filters):
 	
 	data = frappe.db.sql(f"""
 		SELECT
-			DATE_FORMAT(dc.reading_date, '%Y-%m') as month,
+			DATE_FORMAT(dc.reading_date, '%%Y-%%m') as month,
 			dc.petrol_pump,
 			SUM(dc.total_liters) as total_liters,
 			SUM(dc.total_sales) as total_sales,
