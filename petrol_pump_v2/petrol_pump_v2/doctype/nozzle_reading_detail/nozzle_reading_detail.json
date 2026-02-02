@@ -4,7 +4,6 @@
  "doctype": "DocType",
  "engine": "InnoDB",
  "field_order": [
-  "dispenser",
   "nozzle_number",
   "fuel_type",
   "previous_reading",
@@ -15,18 +14,10 @@
  ],
  "fields": [
   {
-   "fieldname": "dispenser",
-   "fieldtype": "Link",
-   "in_list_view": 1,
-   "label": "Dispenser",
-   "options": "Dispenser",
-   "reqd": 1
-  },
-  {
    "fieldname": "nozzle_number",
-   "fieldtype": "Select",
+   "fieldtype": "Data",
    "in_list_view": 1,
-   "label": "Nozzle Number",
+   "label": "Nozzle",
    "reqd": 1
   },
   {
@@ -73,6 +64,7 @@
   }
  ],
  "istable": 1,
+ "editable_grid": 1,
  "links": [],
  "modified": "2025-10-14 13:22:31.245767",
  "modified_by": "Administrator",

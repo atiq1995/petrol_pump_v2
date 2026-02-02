@@ -34,29 +34,27 @@ class ShiftReading(Document):
         self.reopen_shift()
     
     def populate_nozzle_readings(self):
-        """Auto-populate nozzle readings table from dispensers"""
+        """Auto-populate nozzle readings table from standalone Nozzles"""
         if not self.nozzle_readings and self.petrol_pump:
             # Clear existing rows if any
             self.set('nozzle_readings', [])
-            
-            # Get all active dispensers for this petrol pump
-            dispensers = frappe.get_all("Dispenser", 
+
+            nozzles = frappe.get_all(
+                "Nozzle",
                 filters={"petrol_pump": self.petrol_pump, "is_active": 1},
-                fields=["name"]
+                fields=["name", "nozzle_name", "fuel_type", "last_reading"],
             )
-            
-            for dispenser in dispensers:
-                dispenser_doc = frappe.get_doc("Dispenser", dispenser.name)
-                for nozzle in dispenser_doc.nozzles:
-                    if nozzle.is_active:
-                        self.append("nozzle_readings", {
-                            "dispenser": dispenser.name,
-                            "nozzle_number": nozzle.nozzle_number,
-                            "fuel_type": nozzle.fuel_type,
-                            "previous_reading": nozzle.last_reading or 0,
-                            "current_reading": 0,
-                            "rate": self.get_current_rate(nozzle.fuel_type)
-                        })
+
+            for n in nozzles:
+                self.append("nozzle_readings", {
+                    # keep columns compatible with existing child schema
+                    "dispenser": None,
+                    "nozzle_number": n.nozzle_name,
+                    "fuel_type": n.fuel_type,
+                    "previous_reading": n.last_reading or 0,
+                    "current_reading": 0,
+                    "rate": self.get_current_rate(n.fuel_type),
+                })
     
     def calculate_readings(self):
         """Calculate dispensed liters and amounts"""
@@ -157,17 +155,18 @@ class ShiftReading(Document):
         return flt(valuation_rate) if valuation_rate else 0
     
     def update_nozzle_last_readings(self):
-        """Update last_reading in dispenser nozzles"""
-        for nozzle_reading in self.nozzle_readings:
-            # Find the nozzle in dispenser and update last_reading
-            frappe.db.sql(
-                """
-                UPDATE `tabDispenser Nozzle Detail` 
-                SET last_reading = %s 
-                WHERE parent = %s AND nozzle_number = %s
-                """,
-                (nozzle_reading.current_reading, nozzle_reading.dispenser, nozzle_reading.nozzle_number),
-            )
+        """Update last_reading in Nozzle master"""
+        for nozzle_reading in self.nozzle_readings or []:
+            # Match by petrol_pump + nozzle_name
+            nozzle_name = nozzle_reading.nozzle_number
+            if nozzle_name:
+                nn = frappe.db.get_value(
+                    "Nozzle",
+                    {"petrol_pump": self.petrol_pump, "nozzle_name": nozzle_name},
+                    "name",
+                )
+                if nn:
+                    frappe.db.set_value("Nozzle", nn, "last_reading", flt(nozzle_reading.current_reading))
     
     def close_shift(self):
         """Mark shift as closed"""
@@ -192,35 +191,37 @@ class ShiftReading(Document):
                 frappe.throw(f"Error cancelling Stock Entry: {str(e)}")
     
     def revert_nozzle_readings(self):
-        """Revert nozzle last readings to previous values"""
-        for nozzle_reading in self.nozzle_readings:
-            frappe.db.sql(
-                """
-                UPDATE `tabDispenser Nozzle Detail` 
-                SET last_reading = %s 
-                WHERE parent = %s AND nozzle_number = %s
-                """,
-                (nozzle_reading.previous_reading, nozzle_reading.dispenser, nozzle_reading.nozzle_number),
-            )
+        """Revert nozzle last readings on Nozzle master"""
+        for nozzle_reading in self.nozzle_readings or []:
+            nozzle_name = nozzle_reading.nozzle_number
+            if nozzle_name:
+                nn = frappe.db.get_value(
+                    "Nozzle",
+                    {"petrol_pump": self.petrol_pump, "nozzle_name": nozzle_name},
+                    "name",
+                )
+                if nn:
+                    frappe.db.set_value("Nozzle", nn, "last_reading", flt(nozzle_reading.previous_reading))
         frappe.msgprint("Nozzle readings reverted")
 
 @frappe.whitelist()
 def get_active_nozzles(petrol_pump: str):
-    """Return active nozzles for a petrol pump with defaults for child rows."""
+    """Return active nozzles for a petrol pump with defaults for child rows (standalone Nozzle)."""
     rows = []
     if not petrol_pump:
         return rows
-    dispensers = frappe.get_all("Dispenser", filters={"petrol_pump": petrol_pump, "is_active": 1}, fields=["name"])
-    for d in dispensers:
-        doc = frappe.get_doc("Dispenser", d.name)
-        for n in doc.nozzles:
-            if n.is_active:
-                rows.append({
-                    "dispenser": d.name,
-                    "nozzle_number": n.nozzle_number,
-                    "fuel_type": n.fuel_type,
-                    "previous_reading": n.last_reading or 0,
-                    "current_reading": 0,
-                    "rate": ShiftReading.get_current_rate(ShiftReading, n.fuel_type),
-                })
+    nozzles = frappe.get_all(
+        "Nozzle",
+        filters={"petrol_pump": petrol_pump, "is_active": 1},
+        fields=["nozzle_name", "fuel_type", "last_reading"],
+    )
+    for n in nozzles:
+        rows.append({
+            "dispenser": None,
+            "nozzle_number": n.nozzle_name,
+            "fuel_type": n.fuel_type,
+            "previous_reading": n.last_reading or 0,
+            "current_reading": 0,
+            "rate": ShiftReading.get_current_rate(ShiftReading, n.fuel_type),
+        })
     return rows

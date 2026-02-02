@@ -1,0 +1,73 @@
+{
+ "doctype": "DocType",
+ "module": "Petrol Pump V2",
+ "name": "Nozzle",
+ "is_submittable": 0,
+ "autoname": "naming_series:",
+ "fields": [
+  {
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "label": "Naming Series",
+   "options": "NOZ-",
+   "default": "NOZ-",
+   "reqd": 1
+  },
+  {
+   "fieldname": "last_reading",
+   "fieldtype": "Float",
+   "label": "Last Reading",
+   "default": "0"
+  },
+  {
+   "fieldname": "nozzle_name",
+   "fieldtype": "Data",
+   "label": "Nozzle Name",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "petrol_pump",
+   "fieldtype": "Link",
+   "label": "Petrol Pump",
+   "options": "Petrol Pump",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "fuel_tank",
+   "fieldtype": "Link",
+   "label": "Fuel Tank",
+   "options": "Fuel Tank",
+   "reqd": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "fuel_type",
+   "fieldtype": "Link",
+   "label": "Fuel Type",
+   "options": "Fuel Type",
+   "read_only": 1,
+   "in_list_view": 1
+  },
+  {
+   "fieldname": "opening_reading",
+   "fieldtype": "Float",
+   "label": "Opening Reading"
+  },
+  {
+   "fieldname": "is_active",
+   "fieldtype": "Check",
+   "label": "Is Active",
+   "default": 1
+  }
+ ],
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "select": 1}
+ ],
+ "track_changes": 1,
+ "unique": [
+  ["petrol_pump", "nozzle_name"]
+ ]
+}
+

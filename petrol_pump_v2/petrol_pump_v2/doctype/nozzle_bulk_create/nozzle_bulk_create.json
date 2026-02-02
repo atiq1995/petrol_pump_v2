@@ -1,0 +1,40 @@
+{
+ "doctype": "DocType",
+ "module": "Petrol Pump V2",
+ "name": "Nozzle Bulk Create",
+ "is_submittable": 1,
+ "autoname": "field:title",
+ "fields": [
+  {
+   "fieldname": "title",
+   "fieldtype": "Data",
+   "label": "Title",
+   "default": "Bulk Nozzle Creation"
+  },
+  {
+   "fieldname": "petrol_pump",
+   "fieldtype": "Link",
+   "label": "Petrol Pump",
+   "options": "Petrol Pump",
+   "reqd": 1
+  },
+  {
+   "fieldname": "nozzles_to_create",
+   "fieldtype": "Table",
+   "label": "Nozzles",
+   "options": "Nozzle To Create",
+   "reqd": 1
+  },
+  {
+   "fieldname": "created_summary",
+   "fieldtype": "Small Text",
+   "label": "Created Summary",
+   "read_only": 1
+  }
+ ],
+ "permissions": [
+  {"role": "System Manager", "read": 1, "write": 1, "create": 1, "submit": 1, "cancel": 1, "amend": 1}
+ ],
+ "track_changes": 1
+}
+

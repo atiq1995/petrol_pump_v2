@@ -1,0 +1,58 @@
+{
+ "doctype": "DocType",
+ "name": "Day Closing Credit Detail",
+ "module": "Petrol Pump V2",
+ "istable": 1,
+ "editable_grid": 1,
+ "field_order": [
+  "customer",
+  "fuel_type",
+  "liters",
+  "rate",
+  "amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "customer",
+   "fieldtype": "Link",
+   "label": "Customer",
+   "options": "Customer",
+   "in_list_view": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "fuel_type",
+   "fieldtype": "Link",
+   "label": "Fuel Type",
+   "options": "Fuel Type",
+   "in_list_view": 1,
+   "reqd": 1,
+   "description": "Select fuel type - rate will auto-fill"
+  },
+  {
+   "fieldname": "liters",
+   "fieldtype": "Float",
+   "label": "Credit Liters",
+   "in_list_view": 1,
+   "reqd": 1
+  },
+  {
+   "fieldname": "rate",
+   "fieldtype": "Currency",
+   "label": "Rate",
+   "in_list_view": 1,
+   "read_only": 1,
+   "description": "Auto-filled from active fuel price"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "in_list_view": 1,
+   "read_only": 1,
+   "description": "Auto-calculated: Liters × Rate"
+  }
+ ],
+ "permissions": []
+}
+

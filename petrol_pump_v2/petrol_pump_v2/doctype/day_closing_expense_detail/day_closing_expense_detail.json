@@ -1,0 +1,38 @@
+{
+ "doctype": "DocType",
+ "name": "Day Closing Expense Detail",
+ "module": "Petrol Pump V2",
+ "istable": 1,
+ "editable_grid": 1,
+ "field_order": [
+  "expense_account",
+  "amount",
+  "description"
+ ],
+ "fields": [
+  {
+   "fieldname": "expense_account",
+   "fieldtype": "Link",
+   "label": "Expense Account",
+   "options": "Account",
+   "in_list_view": 1,
+   "reqd": 1,
+   "description": "Indirect expense account to which expense will be posted"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "in_list_view": 1,
+   "reqd": 1,
+   "description": "Expense amount to be deducted from cash"
+  },
+  {
+   "fieldname": "description",
+   "fieldtype": "Small Text",
+   "label": "Description",
+   "description": "Optional description for this expense"
+  }
+ ],
+ "permissions": []
+}
