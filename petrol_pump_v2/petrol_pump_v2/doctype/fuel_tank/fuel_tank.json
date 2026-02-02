@@ -4,6 +4,8 @@
  "name": "Fuel Tank",
  "is_submittable": 0,
  "autoname": "naming_series:",
+ "title_field": "tank_name",
+ "show_title_field_in_link": 1,
  "fields": [
   {
    "fieldname": "naming_series",

@@ -7,6 +7,8 @@
  "doctype": "DocType",
  "is_submittable": 1,
  "editable_grid": 1,
+ "title_field": "test_date",
+ "show_title_field_in_link": 1,
  "engine": "InnoDB",
  "field_order": [
   "naming_series",

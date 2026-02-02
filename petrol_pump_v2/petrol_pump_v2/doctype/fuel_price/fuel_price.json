@@ -4,6 +4,8 @@
     "name": "Fuel Price",
     "is_submittable": 0,
     "autoname": "naming_series:",
+    "title_field": "fuel_type",
+    "show_title_field_in_link": 1,
     "fields": [
      {
       "fieldname": "naming_series",

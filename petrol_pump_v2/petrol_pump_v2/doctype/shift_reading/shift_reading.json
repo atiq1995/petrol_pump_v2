@@ -4,6 +4,8 @@
  "name": "Shift Reading",
  "is_submittable": 1,
  "autoname": "naming_series:",
+ "title_field": "reading_date",
+ "show_title_field_in_link": 1,
  "fields": [
   {
    "fieldname": "naming_series",

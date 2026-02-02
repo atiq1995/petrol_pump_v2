@@ -4,6 +4,7 @@
  "name": "Petrol Pump", 
  "is_submittable": 0,
  "title_field": "petrol_pump_name",
+ "show_title_field_in_link": 1,
  "autoname": "field:petrol_pump_name",
  "fields": [
   {

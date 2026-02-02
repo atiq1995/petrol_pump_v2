@@ -4,6 +4,8 @@
  "name": "Shift",
  "is_submittable": 0,
  "autoname": "naming_series:",
+ "title_field": "shift_name",
+ "show_title_field_in_link": 1,
  "fields": [
   {
    "fieldname": "naming_series",
