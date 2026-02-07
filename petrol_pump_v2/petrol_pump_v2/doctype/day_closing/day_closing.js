@@ -6,6 +6,16 @@ frappe.ui.form.on('Day Closing', {
         query: 'petrol_pump_v2.petrol_pump_v2.doctype.day_closing.day_closing.get_indirect_expense_accounts'
       };
     });
+
+    // Filter bank_account in card_sales to match selected bank
+    frm.set_query('bank_account', 'card_sales', function(doc, cdt, cdn) {
+      const row = frappe.get_doc(cdt, cdn);
+      const filters = {};
+      if (row.bank) {
+        filters.bank = row.bank;
+      }
+      return { filters: filters };
+    });
   },
   refresh(frm) {
     if (frm.is_new() && frm.doc.petrol_pump) {
@@ -111,6 +121,23 @@ frappe.ui.form.on('Day Closing Expense Detail', {
   }
 });
 
+// Handle card/POS sales child table
+frappe.ui.form.on('Day Closing Card Detail', {
+  bank(frm, cdt, cdn) {
+    // Clear bank_account when bank changes so user picks the correct one
+    frappe.model.set_value(cdt, cdn, 'bank_account', '');
+  },
+  amount(frm, cdt, cdn) {
+    calculate_total_card_amount(frm);
+  },
+  day_closing_card_detail_add(frm) {
+    calculate_total_card_amount(frm);
+  },
+  day_closing_card_detail_remove(frm) {
+    calculate_total_card_amount(frm);
+  }
+});
+
 // Helper function to calculate amount
 function calculate_amount(frm, cdt, cdn) {
   const row = frappe.get_doc(cdt, cdn);
@@ -163,4 +190,15 @@ function calculate_total_expenses(frm) {
   }
   frm.set_value('total_expenses', total);
   frm.refresh_field('total_expenses');
+}
+
+function calculate_total_card_amount(frm) {
+  let total = 0;
+  if (frm.doc.card_sales && frm.doc.card_sales.length > 0) {
+    frm.doc.card_sales.forEach((row) => {
+      total += parseFloat(row.amount || 0);
+    });
+  }
+  frm.set_value('card_amount', total);
+  frm.refresh_field('card_amount');
 }

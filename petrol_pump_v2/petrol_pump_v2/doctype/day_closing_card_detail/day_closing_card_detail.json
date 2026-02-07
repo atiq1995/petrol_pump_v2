@@ -1,0 +1,52 @@
+{
+ "actions": [],
+ "creation": "2026-02-07 12:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "bank",
+  "bank_account",
+  "amount"
+ ],
+ "fields": [
+  {
+   "fieldname": "bank",
+   "fieldtype": "Link",
+   "label": "Bank",
+   "options": "Bank",
+   "in_list_view": 1,
+   "reqd": 1,
+   "description": "Bank whose POS/card machine was used"
+  },
+  {
+   "fieldname": "bank_account",
+   "fieldtype": "Link",
+   "label": "Bank Account",
+   "options": "Bank Account",
+   "in_list_view": 1,
+   "reqd": 1,
+   "description": "Bank account where card/POS payment will be deposited"
+  },
+  {
+   "fieldname": "amount",
+   "fieldtype": "Currency",
+   "label": "Amount",
+   "in_list_view": 1,
+   "reqd": 1,
+   "description": "Card/POS payment amount collected via this bank"
+  }
+ ],
+ "istable": 1,
+ "editable_grid": 1,
+ "links": [],
+ "modified": "2026-02-07 12:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Petrol Pump V2",
+ "name": "Day Closing Card Detail",
+ "owner": "Administrator",
+ "permissions": [],
+ "row_format": "Dynamic",
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": []
+}

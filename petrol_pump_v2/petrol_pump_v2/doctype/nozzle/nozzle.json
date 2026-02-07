@@ -19,7 +19,9 @@
    "fieldname": "last_reading",
    "fieldtype": "Float",
    "label": "Last Reading",
-   "default": "0"
+   "default": "0",
+   "read_only": 1,
+   "description": "Auto-updated from Day Closing on submit. Cannot be edited manually."
   },
   {
    "fieldname": "nozzle_name",

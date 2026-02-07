@@ -66,6 +66,7 @@ class DayClosing(Document):
         self.calculate_readings()
         self.calculate_credit_totals()
         self.calculate_expense_totals()
+        self.calculate_card_totals()
         self.calculate_cash_reconciliation()
 
     def on_submit(self):
@@ -86,6 +87,14 @@ class DayClosing(Document):
             self.db_set('workflow_state', 'Pending Approval')
         else:
             self.db_set('workflow_state', 'Approved')
+
+    def get_pump_cost_center(self):
+        """Get cost center for this petrol pump, falling back to company default."""
+        company = frappe.db.get_value("Petrol Pump", self.petrol_pump, "company")
+        cost_center = frappe.db.get_value("Petrol Pump", self.petrol_pump, "cost_center")
+        if not cost_center:
+            cost_center = frappe.get_cached_value("Company", company, "cost_center")
+        return cost_center
 
     def get_current_rate(self, fuel_type):
         if not fuel_type:
@@ -121,26 +130,38 @@ class DayClosing(Document):
             total_expenses += flt(getattr(expense, "amount", 0))
         self.total_expenses = total_expenses
 
+    def calculate_card_totals(self):
+        """Calculate total card/POS amount from card_sales child table"""
+        total_card = 0.0
+        for row in getattr(self, "card_sales", []) or []:
+            total_card += flt(getattr(row, "amount", 0))
+        self.card_amount = total_card
+
     def calculate_cash_reconciliation(self):
-        """Calculate cash reconciliation totals and variance
-        
-        Logic:
-        - Expected Collection = Total Sales - Credit Sales (what we should receive in cash/card)
-        - Total Payments Received = Cash + Card (what we actually received)
-        - Cash Variance = Total Payments Received - Expected Collection (positive = excess, negative = short)
-        - Net Cash After Expenses = Total Payments Received - Total Expenses (what's left to deposit)
+        """Cash reconciliation.
+
+        The user enters ACTUAL cash in hand (already reduced by any expenses paid from cash).
+
+        - Total Payments Received = Cash + Card (actual cash & card in hand)
+        - Expected to Collect = Total Sales - Credit Sales
+        - Expected Collection = Expected to Collect - Expenses (what should remain after expenses)
+        - Net Cash After Expenses = Total Payments Received (user already reports post-expense cash)
+        - Cash Variance = Total Payments Received - Expected Collection (should be 0 if correct)
         """
-        # Calculate total payments received (cash + card)
+        # Actual cash + card in hand (user enters cash AFTER paying expenses from it)
         self.total_payments_received = flt(self.cash_amount) + flt(self.card_amount)
-        
-        # Expected collection = Total Sales - Credit Sales (what we should have collected)
-        self.expected_collection = flt(self.total_sales) - flt(self.credit_amount)
-        
-        # Cash variance = Did we collect correctly? (positive = excess, negative = short)
+
+        # Expected to collect from customers: Total Sales - Credit Sales
+        self.expected_to_collect = flt(self.total_sales) - flt(self.credit_amount)
+
+        # Expected cash remaining after expenses are paid out
+        self.expected_collection = flt(self.expected_to_collect) - flt(self.total_expenses)
+
+        # Net cash after expenses = what the user has in hand (expenses already deducted)
+        self.net_cash_after_expenses = flt(self.total_payments_received)
+
+        # Variance = actual in hand - expected remaining (0 means everything matches)
         self.cash_variance = flt(self.total_payments_received) - flt(self.expected_collection)
-        
-        # Net cash after expenses = What's left to deposit after paying expenses
-        self.net_cash_after_expenses = flt(self.total_payments_received) - flt(self.total_expenses)
 
     def calculate_credit_totals(self):
         """Aggregate credit liters and amount from credit_details child table.
@@ -181,6 +202,7 @@ class DayClosing(Document):
                 fuel_consumption[d.fuel_type] = fuel_consumption.get(d.fuel_type, 0) + d.dispensed_liters
         if not fuel_consumption:
             return
+        cost_center = self.get_pump_cost_center()
         se = frappe.new_doc("Stock Entry")
         se.stock_entry_type = "Material Issue"
         se.purpose = "Material Issue"
@@ -203,6 +225,7 @@ class DayClosing(Document):
                     "qty": liters,
                     "basic_rate": valuation_rate,
                     "conversion_factor": 1.0,
+                    "cost_center": cost_center,
                 })
         if se.items:
             se.insert()
@@ -256,8 +279,7 @@ class DayClosing(Document):
                 if credit_row.rate:
                     credit_sales_by_customer[key]['rate'] = credit_row.rate
         
-        # Group cash sales by fuel type (all nozzle readings are cash sales)
-        # Credit sales are separate entries in credit_details table
+        # Group total sales by fuel type from nozzle readings (includes cash + credit)
         cash_fuel_sales = {}
         cash_sales_amount = 0
         for d in self.nozzle_readings:
@@ -272,7 +294,19 @@ class DayClosing(Document):
                 cash_fuel_sales[d.fuel_type]['amount'] += flt(d.amount)
                 cash_sales_amount += flt(d.amount)
         
+        # Subtract credit sales from cash totals (nozzle readings = cash + credit combined)
+        for key, credit_data in credit_sales_by_customer.items():
+            fuel_type = credit_data['fuel_type']
+            credit_qty = flt(credit_data['qty'])
+            credit_amount = flt(credit_data['amount'])
+            
+            if fuel_type in cash_fuel_sales:
+                cash_fuel_sales[fuel_type]['qty'] -= credit_qty
+                cash_fuel_sales[fuel_type]['amount'] -= credit_amount
+                cash_sales_amount -= credit_amount
+        
         created_invoices = []
+        cost_center = self.get_pump_cost_center()
         
         # Create Sales Invoice for cash sales
         if cash_sales_amount > 0 and cash_fuel_sales:
@@ -281,6 +315,7 @@ class DayClosing(Document):
             si.customer = cash_customer
             si.company = company
             si.currency = company_currency
+            si.cost_center = cost_center
             si.posting_date = self.reading_date or nowdate()
             si.set_posting_time = 1
             si.due_date = self.reading_date or nowdate()
@@ -292,7 +327,8 @@ class DayClosing(Document):
                         "qty": data['qty'],
                         "rate": data['rate'],
                         "amount": data['amount'],
-                        "uom": "Litre"
+                        "uom": "Litre",
+                        "cost_center": cost_center,
                     })
             
             if si.items:
@@ -317,6 +353,7 @@ class DayClosing(Document):
                 si.customer = customer
                 si.company = company
                 si.currency = company_currency
+                si.cost_center = cost_center
                 si.posting_date = self.reading_date or nowdate()
                 si.set_posting_time = 1
                 si.due_date = self.reading_date or nowdate()
@@ -326,7 +363,8 @@ class DayClosing(Document):
                     "qty": sales_data['qty'],
                     "rate": sales_data['rate'],
                     "amount": sales_data['amount'],
-                    "uom": "Litre"
+                    "uom": "Litre",
+                    "cost_center": cost_center,
                 })
                 
                 si.insert()
@@ -338,12 +376,12 @@ class DayClosing(Document):
         if created_invoices:
             self.db_set('sales_invoice_ref', ', '.join(created_invoices))
         
-        # Create Payment Entry for cash/UPI/card payments (only against cash customer invoice)
-        if flt(self.total_payments_received) > 0 and created_invoices:
-            # Link payment to the cash customer invoice (first one)
-            cash_invoice = created_invoices[0] if cash_sales_amount > 0 else None
-            if cash_invoice:
-                self.create_payment_entry(frappe.get_doc("Sales Invoice", cash_invoice), company)
+        # Create Payment Entries against the cash customer Sales Invoice
+        # Cash portion goes to cash account, card portions go to respective bank accounts
+        if cash_sales_amount > 0 and created_invoices:
+            cash_invoice_name = created_invoices[0]
+            cash_invoice_doc = frappe.get_doc("Sales Invoice", cash_invoice_name)
+            self.create_collection_payment_entries(cash_invoice_doc, company)
     
     def get_or_create_cash_customer(self, company):
         """Get or create a default Cash Customer"""
@@ -364,68 +402,133 @@ class DayClosing(Document):
         
         return customer_name
     
-    def create_payment_entry(self, sales_invoice, company):
-        """Create Payment Entry for cash collection"""
-        if flt(self.total_payments_received) <= 0:
-            return
+    def create_collection_payment_entries(self, sales_invoice, company):
+        """Create separate Payment Entries for cash and card collections.
         
-        # Get company's default currency
+        - Cash PE: cash_amount + total_expenses → cash account
+          (actual cash collected from customers before expenses were paid out)
+        - Card PEs: one per bank account → respective bank GL account
+          (card/POS collections deposited into bank accounts)
+        
+        All PEs reference the same Cash Customer Sales Invoice.
+        """
         company_currency = frappe.db.get_value("Company", company, "default_currency")
-        
-        # Get default accounts
-        mode_of_payment = frappe.db.get_value("Mode of Payment", {"type": "Cash"}, "name") or "Cash"
-        
-        # Get default receivable account
         default_receivable_account = frappe.get_cached_value("Company", company, "default_receivable_account")
         
-        # Get cash account from mode of payment account or company default
-        cash_account = frappe.db.get_value(
-            "Mode of Payment Account",
-            {"parent": mode_of_payment, "company": company},
-            "default_account"
-        )
-        if not cash_account:
-            cash_account = frappe.get_cached_value("Company", company, "default_cash_account")
+        created_pe_names = []
+        remaining_outstanding = flt(sales_invoice.outstanding_amount)
         
+        # --- 1. Cash Payment Entry (cash collected + expenses paid from cash) ---
+        cash_collection = flt(self.cash_amount) + flt(self.total_expenses)
+        if cash_collection > 0 and remaining_outstanding > 0:
+            mode_of_payment = frappe.db.get_value("Mode of Payment", {"type": "Cash"}, "name") or "Cash"
+            cash_account = frappe.db.get_value(
+                "Mode of Payment Account",
+                {"parent": mode_of_payment, "company": company},
+                "default_account"
+            )
+            if not cash_account:
+                cash_account = frappe.get_cached_value("Company", company, "default_cash_account")
+            
+            allocate = min(flt(cash_collection), remaining_outstanding)
+            pe = self._make_payment_entry(
+                sales_invoice=sales_invoice,
+                company=company,
+                currency=company_currency,
+                paid_from=default_receivable_account,
+                paid_to=cash_account,
+                amount=cash_collection,
+                allocate_amount=allocate,
+                mode_of_payment=mode_of_payment,
+            )
+            created_pe_names.append(pe.name)
+            remaining_outstanding -= allocate
+            frappe.msgprint(f"Payment Entry {pe.name} created for cash collection: {cash_collection}")
+        
+        # --- 2. Card/POS Payment Entries (one per bank account) ---
+        # Group card_sales rows by bank_account
+        card_by_bank = {}
+        for row in getattr(self, "card_sales", []) or []:
+            if not row.bank_account or flt(row.amount) <= 0:
+                continue
+            if row.bank_account not in card_by_bank:
+                card_by_bank[row.bank_account] = 0
+            card_by_bank[row.bank_account] += flt(row.amount)
+        
+        for bank_account_name, card_amount in card_by_bank.items():
+            if card_amount <= 0 or remaining_outstanding <= 0:
+                continue
+            
+            # Get the GL account from the Bank Account document
+            gl_account = frappe.db.get_value("Bank Account", bank_account_name, "account")
+            if not gl_account:
+                frappe.throw(
+                    f"Bank Account '{bank_account_name}' does not have a linked GL Account. "
+                    "Please set the Account field on the Bank Account."
+                )
+            
+            # Try to find a card/bank transfer mode of payment
+            mode_of_payment = frappe.db.get_value(
+                "Mode of Payment", {"type": "Bank"}, "name"
+            ) or "Bank Draft"
+            
+            allocate = min(flt(card_amount), remaining_outstanding)
+            pe = self._make_payment_entry(
+                sales_invoice=sales_invoice,
+                company=company,
+                currency=company_currency,
+                paid_from=default_receivable_account,
+                paid_to=gl_account,
+                amount=card_amount,
+                allocate_amount=allocate,
+                mode_of_payment=mode_of_payment,
+            )
+            created_pe_names.append(pe.name)
+            remaining_outstanding -= allocate
+            
+            bank_label = frappe.db.get_value("Bank Account", bank_account_name, "bank") or bank_account_name
+            frappe.msgprint(f"Payment Entry {pe.name} created for card collection ({bank_label}): {card_amount}")
+        
+        # Store all PE references (comma-separated) for cancellation
+        if created_pe_names:
+            self.db_set('payment_entry_ref', ', '.join(created_pe_names))
+    
+    def _make_payment_entry(self, sales_invoice, company, currency, paid_from,
+                            paid_to, amount, allocate_amount, mode_of_payment):
+        """Helper to create and submit a single Payment Entry."""
         pe = frappe.new_doc("Payment Entry")
         pe.payment_type = "Receive"
         pe.party_type = "Customer"
         pe.party = sales_invoice.customer
         pe.company = company
+        pe.cost_center = self.get_pump_cost_center()
         pe.posting_date = self.reading_date or nowdate()
         
-        # Set currency and exchange rate
-        pe.paid_from_account_currency = company_currency
-        pe.paid_to_account_currency = company_currency
+        pe.paid_from_account_currency = currency
+        pe.paid_to_account_currency = currency
         pe.source_exchange_rate = 1.0
         pe.target_exchange_rate = 1.0
         
-        # Set accounts
-        pe.paid_from = default_receivable_account
-        pe.paid_to = cash_account
+        pe.paid_from = paid_from
+        pe.paid_to = paid_to
         
-        # Set amounts
-        pe.paid_amount = flt(self.total_payments_received)
-        pe.received_amount = flt(self.total_payments_received)
+        pe.paid_amount = flt(amount)
+        pe.received_amount = flt(amount)
         pe.mode_of_payment = mode_of_payment
         pe.reference_no = self.name
         pe.reference_date = self.reading_date or nowdate()
         
-        # Link to sales invoice
         pe.append("references", {
             "reference_doctype": "Sales Invoice",
             "reference_name": sales_invoice.name,
             "total_amount": sales_invoice.grand_total,
-            "outstanding_amount": sales_invoice.outstanding_amount,
-            "allocated_amount": min(flt(self.total_payments_received), sales_invoice.outstanding_amount)
+            "outstanding_amount": flt(allocate_amount),
+            "allocated_amount": flt(allocate_amount),
         })
         
         pe.insert()
         pe.submit()
-        # Store reference for cancellation handling
-        self.db_set('payment_entry_ref', pe.name)
-        
-        frappe.msgprint(f"Payment Entry {pe.name} created for {self.total_payments_received}")
+        return pe
 
     def create_expense_payment_entries(self):
         """Create Journal Entries for expenses - debits expense accounts and credits cash account"""
@@ -452,8 +555,8 @@ class DayClosing(Document):
         if not cash_account:
             frappe.throw("Cash account not found. Please configure Mode of Payment or Company default cash account.")
         
-        # Get cost center (optional, but good practice)
-        cost_center = frappe.get_cached_value("Company", company, "cost_center")
+        # Get pump-specific cost center for location-wise reporting
+        cost_center = self.get_pump_cost_center()
         
         created_journal_entries = []
         
@@ -584,15 +687,17 @@ class DayClosing(Document):
                 except Exception as e:
                     errors.append(f"Expense Journal Entry {expense_ref}: {str(e)}")
         
-        # Cancel Payment Entry (cash collection) - must be done before Sales Invoice
+        # Cancel Payment Entries (cash + card collections) - must be done before Sales Invoice
         if self.payment_entry_ref:
-            try:
-                pe = frappe.get_doc("Payment Entry", self.payment_entry_ref)
-                if pe.docstatus == 1:  # Only cancel if submitted
-                    pe.cancel()
-                    frappe.msgprint(f"Payment Entry {self.payment_entry_ref} cancelled")
-            except Exception as e:
-                errors.append(f"Payment Entry {self.payment_entry_ref}: {str(e)}")
+            pe_refs = [ref.strip() for ref in str(self.payment_entry_ref).split(',')]
+            for pe_ref in pe_refs:
+                try:
+                    pe = frappe.get_doc("Payment Entry", pe_ref)
+                    if pe.docstatus == 1:  # Only cancel if submitted
+                        pe.cancel()
+                        frappe.msgprint(f"Payment Entry {pe_ref} cancelled")
+                except Exception as e:
+                    errors.append(f"Payment Entry {pe_ref}: {str(e)}")
         
         # Cancel all Sales Invoices (may be multiple for credit customers)
         if self.sales_invoice_ref:
@@ -672,13 +777,13 @@ def get_active_nozzles_for_day_closing(petrol_pump: str, reading_date: str = Non
         # Try to get previous reading from last submitted Day Closing
         previous_reading = None
         
-        # Get the last submitted Day Closing for this pump before the reading date
+        # Get the last submitted Day Closing for this pump on or before the reading date
         last_day_closing = frappe.db.sql("""
             SELECT name 
             FROM `tabDay Closing`
             WHERE petrol_pump = %s 
             AND docstatus = 1 
-            AND reading_date < %s
+            AND reading_date <= %s
             ORDER BY reading_date DESC, creation DESC
             LIMIT 1
         """, (petrol_pump, reading_date_obj), as_dict=True)
@@ -693,8 +798,8 @@ def get_active_nozzles_for_day_closing(petrol_pump: str, reading_date: str = Non
                 LIMIT 1
             """, (last_day_closing[0].name, n.nozzle_name), as_dict=True)
             
-            if nozzle_reading and nozzle_reading[0].current_reading:
-                previous_reading = nozzle_reading[0].current_reading
+            if nozzle_reading and nozzle_reading[0].current_reading is not None:
+                previous_reading = flt(nozzle_reading[0].current_reading)
         
         # Fallback to Nozzle.last_reading or opening_reading
         if previous_reading is None:

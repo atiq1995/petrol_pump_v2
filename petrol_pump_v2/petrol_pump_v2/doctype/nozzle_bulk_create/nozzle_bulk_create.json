@@ -3,20 +3,17 @@
  "module": "Petrol Pump V2",
  "name": "Nozzle Bulk Create",
  "is_submittable": 1,
- "autoname": "field:title",
+ "autoname": "NBC-.#####",
+ "title_field": "petrol_pump",
+ "show_title_field_in_link": 1,
  "fields": [
-  {
-   "fieldname": "title",
-   "fieldtype": "Data",
-   "label": "Title",
-   "default": "Bulk Nozzle Creation"
-  },
   {
    "fieldname": "petrol_pump",
    "fieldtype": "Link",
    "label": "Petrol Pump",
    "options": "Petrol Pump",
-   "reqd": 1
+   "reqd": 1,
+   "in_list_view": 1
   },
   {
    "fieldname": "nozzles_to_create",
@@ -37,4 +34,3 @@
  ],
  "track_changes": 1
 }
-

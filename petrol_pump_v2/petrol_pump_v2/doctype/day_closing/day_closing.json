@@ -17,6 +17,8 @@
   "section_break_expenses",
   "expenses",
   "total_expenses",
+  "section_break_card_sales",
+  "card_sales",
   "section_break_sales",
   "total_sales",
   "total_liters",
@@ -27,6 +29,7 @@
   "credit_amount",
   "section_break_reconciliation",
   "total_payments_received",
+  "expected_to_collect",
   "expected_collection",
   "column_break_variance",
   "net_cash_after_expenses",
@@ -106,6 +109,18 @@
    "read_only": 1
   },
   {
+   "fieldname": "section_break_card_sales",
+   "fieldtype": "Section Break",
+   "label": "Card/POS Collections"
+  },
+  {
+   "description": "Card and POS payments received via different banks",
+   "fieldname": "card_sales",
+   "fieldtype": "Table",
+   "label": "Card/POS Sales",
+   "options": "Day Closing Card Detail"
+  },
+  {
    "fieldname": "section_break_sales",
    "fieldtype": "Section Break",
    "label": "Sales Summary"
@@ -134,10 +149,11 @@
    "label": "Cash Collected"
   },
   {
-   "description": "Total card payments received",
+   "description": "Total card/POS payments (auto-calculated from Card/POS Sales table)",
    "fieldname": "card_amount",
    "fieldtype": "Currency",
-   "label": "Card/POS Amount"
+   "label": "Card/POS Amount",
+   "read_only": 1
   },
   {
    "fieldname": "column_break_cash",
@@ -175,14 +191,21 @@
    "label": "Reconciliation"
   },
   {
-   "description": "Cash + Card",
+   "description": "Total cash collected (Cash + Card). Expenses are subtracted only once below.",
    "fieldname": "total_payments_received",
    "fieldtype": "Currency",
    "label": "Total Payments Received",
    "read_only": 1
   },
   {
-   "description": "Total Sales - Credit Sales",
+   "description": "Total Sales - Credit Sales (expected from customers). Not subtracted from cash.",
+   "fieldname": "expected_to_collect",
+   "fieldtype": "Currency",
+   "label": "Expected to Collect",
+   "read_only": 1
+  },
+  {
+   "description": "Expected to Collect minus Expenses (once). Amount we expect to deposit.",
    "fieldname": "expected_collection",
    "fieldtype": "Currency",
    "label": "Expected Collection",
@@ -193,14 +216,14 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "Payments Received - Expenses (amount to deposit)",
+   "description": "Total Payments Received minus Expenses (once). Actual amount to deposit.",
    "fieldname": "net_cash_after_expenses",
    "fieldtype": "Currency",
    "label": "Net Cash After Expenses",
    "read_only": 1
   },
   {
-   "description": "Payments Received - Expected Collection (positive = excess, negative = short)",
+   "description": "Net Cash After Expenses minus Expected Collection. Positive = excess, negative = short.",
    "fieldname": "cash_variance",
    "fieldtype": "Currency",
    "label": "Cash Variance",
@@ -232,11 +255,10 @@
    "fieldtype": "Column Break"
   },
   {
-   "description": "Auto-created Payment Entry for cash collection",
+   "description": "Auto-created Payment Entries for cash and card collections (comma-separated)",
    "fieldname": "payment_entry_ref",
-   "fieldtype": "Link",
-   "label": "Payment Entry Reference",
-   "options": "Payment Entry",
+   "fieldtype": "Small Text",
+   "label": "Payment Entry References",
    "read_only": 1
   },
   {
