@@ -77,18 +77,21 @@ class ShiftReading(Document):
         self.total_sales = total_sales
         self.total_liters = total_liters
     
-    def get_current_rate(self, fuel_type):
-        """Get current active fuel price (effective now or earlier)"""
+    def get_current_rate(self, fuel_type, petrol_pump=None):
+        """Get current active fuel price for a specific petrol pump"""
         if not fuel_type:
+            return 0
+        pump = petrol_pump or self.petrol_pump
+        if not pump:
             return 0
         rate = frappe.db.sql(
             """
             SELECT price_per_liter 
             FROM `tabFuel Price` 
-            WHERE fuel_type = %s AND is_active = 1 AND effective_from <= %s
+            WHERE fuel_type = %s AND petrol_pump = %s AND is_active = 1 AND effective_from <= %s
             ORDER BY effective_from DESC LIMIT 1
             """,
-            (fuel_type, now_datetime()),
+            (fuel_type, pump, now_datetime()),
         )
         return rate[0][0] if rate else 0
     
@@ -222,6 +225,6 @@ def get_active_nozzles(petrol_pump: str):
             "fuel_type": n.fuel_type,
             "previous_reading": n.last_reading or 0,
             "current_reading": 0,
-            "rate": ShiftReading.get_current_rate(ShiftReading, n.fuel_type),
+            "rate": ShiftReading.get_current_rate(ShiftReading, n.fuel_type, petrol_pump),
         })
     return rows

@@ -16,24 +16,39 @@
       "reqd": 1
      },
      {
+      "fieldname": "petrol_pump",
+      "fieldtype": "Link",
+      "label": "Petrol Pump",
+      "options": "Petrol Pump",
+      "reqd": 1,
+      "in_list_view": 1
+     },
+     {
       "fieldname": "fuel_type",
       "fieldtype": "Link",
       "label": "Fuel Type",
       "options": "Fuel Type",
-      "reqd": 1
+      "reqd": 1,
+      "in_list_view": 1
+     },
+     {
+      "fieldname": "column_break_price",
+      "fieldtype": "Column Break"
      },
      {
       "fieldname": "price_per_liter",
       "fieldtype": "Currency",
       "label": "Price Per Liter",
-      "reqd": 1
+      "reqd": 1,
+      "in_list_view": 1
      },
      {
       "fieldname": "effective_from",
       "fieldtype": "Datetime",
       "label": "Effective From",
       "reqd": 1,
-      "default": "Now"
+      "default": "Now",
+      "in_list_view": 1
      },
      {
       "fieldname": "is_active",
@@ -56,4 +71,3 @@
     ],
     "track_changes": 1
    }
-   

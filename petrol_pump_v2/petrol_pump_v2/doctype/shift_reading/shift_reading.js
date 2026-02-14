@@ -86,7 +86,7 @@ frappe.ui.form.on('Nozzle Reading Detail', {
           method: 'frappe.client.get_list',
           args: {
             doctype: 'Fuel Price',
-            filters: { fuel_type: row.fuel_type, is_active: 1 },
+            filters: { fuel_type: row.fuel_type, petrol_pump: frm.doc.petrol_pump, is_active: 1 },
             fields: ['price_per_liter', 'effective_from'],
             order_by: 'effective_from desc',
             limit_page_length: 1,

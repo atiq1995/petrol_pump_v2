@@ -165,10 +165,12 @@ class FuelTesting(Document):
 				frappe.throw(f"Error cancelling Stock Entry: {str(e)}")
 
 	def get_current_rate(self, fuel_type):
+		if not self.petrol_pump:
+			return 0
 		rate = frappe.db.sql("""
 			SELECT price_per_liter
 			FROM `tabFuel Price`
-			WHERE fuel_type = %s AND is_active = 1 AND effective_from <= %s
+			WHERE fuel_type = %s AND petrol_pump = %s AND is_active = 1 AND effective_from <= %s
 			ORDER BY effective_from DESC LIMIT 1
-		""", (fuel_type, get_datetime(self.test_date or nowdate())))
+		""", (fuel_type, self.petrol_pump, get_datetime(self.test_date or nowdate())))
 		return rate[0][0] if rate else 0

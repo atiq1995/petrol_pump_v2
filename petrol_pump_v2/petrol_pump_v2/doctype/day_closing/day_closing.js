@@ -79,6 +79,7 @@ frappe.ui.form.on('Day Closing Credit Detail', {
         method: 'petrol_pump_v2.petrol_pump_v2.doctype.day_closing.day_closing.get_current_fuel_rate',
         args: {
           fuel_type: row.fuel_type,
+          petrol_pump: frm.doc.petrol_pump,
           reading_date: reading_date
         }
       }).then((r) => {

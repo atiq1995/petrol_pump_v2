@@ -41,6 +41,7 @@ frappe.ui.form.on('Fuel Testing Detail', {
 							doctype: 'Fuel Price',
 							filters: {
 								fuel_type: fuel_type,
+								petrol_pump: frm.doc.petrol_pump,
 								is_active: 1,
 								effective_from: ['<=', frm.doc.test_date || frappe.datetime.now_datetime()]
 							},

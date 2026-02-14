@@ -96,17 +96,20 @@ class DayClosing(Document):
             cost_center = frappe.get_cached_value("Company", company, "cost_center")
         return cost_center
 
-    def get_current_rate(self, fuel_type):
+    def get_current_rate(self, fuel_type, petrol_pump=None):
         if not fuel_type:
+            return 0
+        pump = petrol_pump or self.petrol_pump
+        if not pump:
             return 0
         rate = frappe.db.sql(
             """
             SELECT price_per_liter 
             FROM `tabFuel Price` 
-            WHERE fuel_type = %s AND is_active = 1 AND effective_from <= %s
+            WHERE fuel_type = %s AND petrol_pump = %s AND is_active = 1 AND effective_from <= %s
             ORDER BY effective_from DESC LIMIT 1
             """,
-            (fuel_type, now_datetime()),
+            (fuel_type, pump, now_datetime()),
         )
         return rate[0][0] if rate else 0
 
@@ -731,9 +734,9 @@ class DayClosing(Document):
             frappe.msgprint("All linked transactions cancelled successfully", indicator="green")
 
 @frappe.whitelist()
-def get_current_fuel_rate(fuel_type: str, reading_date: str = None):
-    """Get current active fuel price rate for a fuel type"""
-    if not fuel_type:
+def get_current_fuel_rate(fuel_type: str, petrol_pump: str = None, reading_date: str = None):
+    """Get current active fuel price rate for a fuel type at a specific petrol pump"""
+    if not fuel_type or not petrol_pump:
         return 0
     
     from frappe.utils import now_datetime, getdate
@@ -746,10 +749,10 @@ def get_current_fuel_rate(fuel_type: str, reading_date: str = None):
         """
         SELECT price_per_liter 
         FROM `tabFuel Price` 
-        WHERE fuel_type = %s AND is_active = 1 AND effective_from <= %s
+        WHERE fuel_type = %s AND petrol_pump = %s AND is_active = 1 AND effective_from <= %s
         ORDER BY effective_from DESC LIMIT 1
         """,
-        (fuel_type, effective_date),
+        (fuel_type, petrol_pump, effective_date),
     )
     return rate[0][0] if rate and rate[0] else 0
 
@@ -810,7 +813,7 @@ def get_active_nozzles_for_day_closing(petrol_pump: str, reading_date: str = Non
             "fuel_type": n.fuel_type,
             "previous_reading": previous_reading,
             "current_reading": 0,
-            "rate": DayClosing.get_current_rate(DayClosing, n.fuel_type),
+            "rate": DayClosing.get_current_rate(DayClosing, n.fuel_type, petrol_pump),
         })
     
     return rows
