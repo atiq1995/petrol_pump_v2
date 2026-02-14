@@ -18,7 +18,7 @@ frappe.ui.form.on('Day Closing', {
     });
   },
   refresh(frm) {
-    if (frm.is_new() && frm.doc.petrol_pump) {
+    if (frm.is_new() && frm.doc.petrol_pump && (!frm.doc.nozzle_readings || frm.doc.nozzle_readings.length === 0)) {
       populate_nozzles(frm);
       show_available_stock(frm);
     }

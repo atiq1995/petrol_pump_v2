@@ -171,7 +171,7 @@ class FuelTesting(Document):
 			SELECT fpd.price_per_liter
 			FROM `tabFuel Price Detail` fpd
 			JOIN `tabFuel Price` fp ON fpd.parent = fp.name
-			WHERE fpd.fuel_type = %s AND fp.petrol_pump = %s AND fp.is_active = 1 AND fp.effective_from <= %s
+			WHERE fpd.fuel_type = %s AND fp.petrol_pump = %s AND fp.effective_from <= %s
 			ORDER BY fp.effective_from DESC LIMIT 1
 		""", (fuel_type, self.petrol_pump, get_datetime(self.test_date or nowdate())))
 		return rate[0][0] if rate else 0
