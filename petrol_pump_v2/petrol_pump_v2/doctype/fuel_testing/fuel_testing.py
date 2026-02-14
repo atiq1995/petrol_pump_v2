@@ -168,9 +168,10 @@ class FuelTesting(Document):
 		if not self.petrol_pump:
 			return 0
 		rate = frappe.db.sql("""
-			SELECT price_per_liter
-			FROM `tabFuel Price`
-			WHERE fuel_type = %s AND petrol_pump = %s AND is_active = 1 AND effective_from <= %s
-			ORDER BY effective_from DESC LIMIT 1
+			SELECT fpd.price_per_liter
+			FROM `tabFuel Price Detail` fpd
+			JOIN `tabFuel Price` fp ON fpd.parent = fp.name
+			WHERE fpd.fuel_type = %s AND fp.petrol_pump = %s AND fp.is_active = 1 AND fp.effective_from <= %s
+			ORDER BY fp.effective_from DESC LIMIT 1
 		""", (fuel_type, self.petrol_pump, get_datetime(self.test_date or nowdate())))
 		return rate[0][0] if rate else 0

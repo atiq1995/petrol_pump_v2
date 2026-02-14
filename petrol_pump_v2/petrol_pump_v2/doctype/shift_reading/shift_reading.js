@@ -81,18 +81,16 @@ frappe.ui.form.on('Nozzle Reading Detail', {
         row.fuel_type = noz.fuel_type || '';
         row.previous_reading = noz.last_reading || 0;
       }
-      if (row.fuel_type) {
+      if (row.fuel_type && frm.doc.petrol_pump) {
         frappe.call({
-          method: 'frappe.client.get_list',
+          method: 'petrol_pump_v2.petrol_pump_v2.doctype.day_closing.day_closing.get_current_fuel_rate',
           args: {
-            doctype: 'Fuel Price',
-            filters: { fuel_type: row.fuel_type, petrol_pump: frm.doc.petrol_pump, is_active: 1 },
-            fields: ['price_per_liter', 'effective_from'],
-            order_by: 'effective_from desc',
-            limit_page_length: 1,
+            fuel_type: row.fuel_type,
+            petrol_pump: frm.doc.petrol_pump,
+            reading_date: frm.doc.reading_date || frappe.datetime.get_today()
           },
         }).then((pr) => {
-          row.rate = (pr.message && pr.message[0] && pr.message[0].price_per_liter) || 0;
+          row.rate = pr.message || 0;
           row.dispensed_liters = (row.current_reading || 0) - (row.previous_reading || 0);
           row.amount = (row.dispensed_liters || 0) * (row.rate || 0);
           frm.refresh_field('nozzle_readings');

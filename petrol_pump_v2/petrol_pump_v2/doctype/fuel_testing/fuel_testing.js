@@ -28,29 +28,22 @@ frappe.ui.form.on('Fuel Testing Detail', {
 			return;
 		}
 
-		// Fetch fuel_type from Nozzle, then get active rate
+		// Fetch fuel_type from Nozzle, then get active rate from server
 		frappe.db.get_value('Nozzle', row.nozzle, ['fuel_type', 'nozzle_name']).then(r => {
 			if (r.message) {
 				const fuel_type = r.message.fuel_type;
 				frappe.model.set_value(cdt, cdn, 'fuel_type', fuel_type);
 
-				if (fuel_type) {
+				if (fuel_type && frm.doc.petrol_pump) {
 					frappe.call({
-						method: 'frappe.client.get_list',
+						method: 'petrol_pump_v2.petrol_pump_v2.doctype.day_closing.day_closing.get_current_fuel_rate',
 						args: {
-							doctype: 'Fuel Price',
-							filters: {
-								fuel_type: fuel_type,
-								petrol_pump: frm.doc.petrol_pump,
-								is_active: 1,
-								effective_from: ['<=', frm.doc.test_date || frappe.datetime.now_datetime()]
-							},
-							fields: ['price_per_liter'],
-							order_by: 'effective_from desc',
-							limit_page_length: 1
+							fuel_type: fuel_type,
+							petrol_pump: frm.doc.petrol_pump,
+							reading_date: frm.doc.test_date || frappe.datetime.get_today()
 						},
 						callback: function (pr) {
-							const rate = (pr.message && pr.message.length) ? pr.message[0].price_per_liter : 0;
+							const rate = pr.message || 0;
 							frappe.model.set_value(cdt, cdn, 'rate', rate);
 							frappe.model.set_value(cdt, cdn, 'amount', flt(row.test_liters) * flt(rate));
 						}

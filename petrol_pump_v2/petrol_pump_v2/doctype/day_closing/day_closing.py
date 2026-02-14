@@ -104,10 +104,11 @@ class DayClosing(Document):
             return 0
         rate = frappe.db.sql(
             """
-            SELECT price_per_liter 
-            FROM `tabFuel Price` 
-            WHERE fuel_type = %s AND petrol_pump = %s AND is_active = 1 AND effective_from <= %s
-            ORDER BY effective_from DESC LIMIT 1
+            SELECT fpd.price_per_liter 
+            FROM `tabFuel Price Detail` fpd
+            JOIN `tabFuel Price` fp ON fpd.parent = fp.name
+            WHERE fpd.fuel_type = %s AND fp.petrol_pump = %s AND fp.is_active = 1 AND fp.effective_from <= %s
+            ORDER BY fp.effective_from DESC LIMIT 1
             """,
             (fuel_type, pump, now_datetime()),
         )
@@ -747,10 +748,11 @@ def get_current_fuel_rate(fuel_type: str, petrol_pump: str = None, reading_date:
     
     rate = frappe.db.sql(
         """
-        SELECT price_per_liter 
-        FROM `tabFuel Price` 
-        WHERE fuel_type = %s AND petrol_pump = %s AND is_active = 1 AND effective_from <= %s
-        ORDER BY effective_from DESC LIMIT 1
+        SELECT fpd.price_per_liter 
+        FROM `tabFuel Price Detail` fpd
+        JOIN `tabFuel Price` fp ON fpd.parent = fp.name
+        WHERE fpd.fuel_type = %s AND fp.petrol_pump = %s AND fp.is_active = 1 AND fp.effective_from <= %s
+        ORDER BY fp.effective_from DESC LIMIT 1
         """,
         (fuel_type, petrol_pump, effective_date),
     )
