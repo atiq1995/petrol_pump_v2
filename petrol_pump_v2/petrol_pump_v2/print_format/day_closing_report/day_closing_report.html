@@ -476,6 +476,12 @@
         <div class="dc-summary-box">
             <div class="dc-summary-box-title">Payment Collection</div>
             <div class="dc-summary-box-body">
+                {% if doc.previous_cash %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Previous Cash (Carried Forward)</span>
+                    <span class="dc-summary-row-value" style="color:#8e44ad;">{{ frappe.format_value(doc.previous_cash, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                {% endif %}
                 <div class="dc-summary-row">
                     <span class="dc-summary-row-label">Cash Collected</span>
                     <span class="dc-summary-row-value">{{ frappe.format_value(doc.cash_amount, {"fieldtype": "Currency"}) }}</span>

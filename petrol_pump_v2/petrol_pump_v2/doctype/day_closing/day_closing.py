@@ -144,27 +144,28 @@ class DayClosing(Document):
     def calculate_cash_reconciliation(self):
         """Cash reconciliation.
 
-        The user enters ACTUAL cash in hand (already reduced by any expenses paid from cash).
-
-        - Total Payments Received = Cash + Card (actual cash & card in hand)
+        - Previous Cash = carried forward from last Day Closing
+        - Total Payments Received = Previous Cash + Cash Collected + Card
         - Expected to Collect = Total Sales - Credit Sales
-        - Expected Collection = Expected to Collect - Expenses (what should remain after expenses)
-        - Net Cash After Expenses = Total Payments Received (user already reports post-expense cash)
+        - Expected Collection = Previous Cash + Expected to Collect - Expenses
+        - Net Cash After Expenses = Total Payments Received
         - Cash Variance = Total Payments Received - Expected Collection (should be 0 if correct)
         """
-        # Actual cash + card in hand (user enters cash AFTER paying expenses from it)
-        self.total_payments_received = flt(self.cash_amount) + flt(self.card_amount)
+        previous = flt(self.previous_cash)
+
+        # Total = previous day's cash + today's collections
+        self.total_payments_received = previous + flt(self.cash_amount) + flt(self.card_amount)
 
         # Expected to collect from customers: Total Sales - Credit Sales
         self.expected_to_collect = flt(self.total_sales) - flt(self.credit_amount)
 
-        # Expected cash remaining after expenses are paid out
-        self.expected_collection = flt(self.expected_to_collect) - flt(self.total_expenses)
+        # Expected cash = previous cash + expected collections - expenses
+        self.expected_collection = previous + flt(self.expected_to_collect) - flt(self.total_expenses)
 
-        # Net cash after expenses = what the user has in hand (expenses already deducted)
+        # Net cash after expenses = total payments received
         self.net_cash_after_expenses = flt(self.total_payments_received)
 
-        # Variance = actual in hand - expected remaining (0 means everything matches)
+        # Variance = actual - expected (0 means everything matches)
         self.cash_variance = flt(self.total_payments_received) - flt(self.expected_collection)
 
     def calculate_credit_totals(self):
@@ -881,3 +882,28 @@ def get_indirect_expense_accounts(doctype, txt, searchfield, start, page_len, fi
     }, as_list=True)
     
     return accounts
+
+
+@frappe.whitelist()
+def get_previous_cash(petrol_pump: str, reading_date: str = None):
+    """Get cash_amount from the last submitted Day Closing for this pump"""
+    if not petrol_pump:
+        return 0
+
+    from frappe.utils import getdate, nowdate
+    if reading_date:
+        reading_date_obj = getdate(reading_date)
+    else:
+        reading_date_obj = getdate(nowdate())
+
+    result = frappe.db.sql("""
+        SELECT cash_amount
+        FROM `tabDay Closing`
+        WHERE petrol_pump = %s
+        AND docstatus = 1
+        AND reading_date < %s
+        ORDER BY reading_date DESC, creation DESC
+        LIMIT 1
+    """, (petrol_pump, reading_date_obj), as_dict=True)
+
+    return flt(result[0].cash_amount) if result else 0

@@ -23,6 +23,7 @@
   "total_sales",
   "total_liters",
   "section_break_cash",
+  "previous_cash",
   "cash_amount",
   "card_amount",
   "column_break_cash",
@@ -143,7 +144,14 @@
    "label": "Payment Collection"
   },
   {
-   "description": "Total cash received from customers",
+   "description": "Cash carried forward from the previous Day Closing (auto-populated)",
+   "fieldname": "previous_cash",
+   "fieldtype": "Currency",
+   "label": "Previous Cash",
+   "read_only": 1
+  },
+  {
+   "description": "Cash collected from today's sales",
    "fieldname": "cash_amount",
    "fieldtype": "Currency",
    "label": "Cash Collected"
