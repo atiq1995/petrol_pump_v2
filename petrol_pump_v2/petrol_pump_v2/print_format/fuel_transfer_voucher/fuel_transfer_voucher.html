@@ -1,0 +1,260 @@
+{%- set company = frappe.db.get_default("company") -%}
+{%- set company_doc = frappe.get_doc("Company", company) -%}
+{%- set fuel_name = frappe.db.get_value("Fuel Type", doc.fuel_type, "fuel_type_name") or doc.fuel_type -%}
+{%- set from_tank_name = frappe.db.get_value("Fuel Tank", doc.from_fuel_tank, "tank_name") or doc.from_fuel_tank -%}
+{%- set to_tank_name = frappe.db.get_value("Fuel Tank", doc.to_fuel_tank, "tank_name") or doc.to_fuel_tank -%}
+
+<style>
+    @page {
+        size: A4;
+        margin: 12mm 10mm 20mm 10mm;
+        @bottom-center {
+            content: "Page " counter(page) " of " counter(pages);
+            font-size: 8pt;
+            color: #999;
+        }
+    }
+    @media print {
+        .print-format { padding: 0 !important; }
+    }
+    .ftr-report {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        font-size: 10pt;
+        color: #333;
+        line-height: 1.4;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+    .ftr-header {
+        border-bottom: 3px solid #d35400;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .ftr-header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+    .ftr-company-info { flex: 1; }
+    .ftr-company-name { font-size: 18pt; font-weight: 700; color: #d35400; margin: 0; }
+    .ftr-company-address { font-size: 8pt; color: #666; margin: 2px 0 0 0; }
+    .ftr-pump-info { text-align: right; flex-shrink: 0; }
+    .ftr-pump-name { font-size: 12pt; font-weight: 700; color: #d35400; margin: 0; }
+    .ftr-pump-label { font-size: 7pt; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ftr-logo { max-height: 50px; max-width: 100px; margin-left: 15px; }
+    .ftr-title {
+        text-align: center;
+        background: #d35400;
+        color: #fff;
+        padding: 6px 15px;
+        font-size: 13pt;
+        font-weight: 600;
+        letter-spacing: 1px;
+        margin: 8px 0;
+    }
+    .ftr-info-grid {
+        display: flex;
+        flex-wrap: wrap;
+        border: 1px solid #ddd;
+        margin-bottom: 15px;
+    }
+    .ftr-info-cell {
+        flex: 1 1 25%;
+        padding: 6px 10px;
+        border-right: 1px solid #ddd;
+        border-bottom: 1px solid #ddd;
+        min-width: 140px;
+    }
+    .ftr-info-cell:last-child { border-right: none; }
+    .ftr-info-label { font-size: 7pt; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .ftr-info-value { font-size: 10pt; font-weight: 600; color: #d35400; }
+    .ftr-section-title {
+        background: #fdebd0;
+        border-left: 4px solid #d35400;
+        padding: 5px 10px;
+        font-size: 10pt;
+        font-weight: 700;
+        color: #d35400;
+        margin: 12px 0 6px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .ftr-transfer-box { border: 1px solid #ddd; margin-bottom: 15px; overflow: hidden; }
+    .ftr-transfer-body { padding: 15px; }
+    .ftr-transfer-flow { display: flex; align-items: center; justify-content: center; gap: 15px; }
+    .ftr-location-card {
+        flex: 1;
+        border: 2px solid #ddd;
+        padding: 15px;
+        text-align: center;
+        background: #f9f9f9;
+    }
+    .ftr-location-type { font-size: 8pt; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .ftr-location-pump { font-size: 12pt; font-weight: 700; color: #d35400; margin-bottom: 4px; }
+    .ftr-location-tank { font-size: 9pt; color: #555; }
+    .ftr-arrow { font-size: 28pt; color: #d35400; font-weight: 700; flex-shrink: 0; }
+    .ftr-quantity-box {
+        border: 2px solid #d35400;
+        margin: 15px auto;
+        max-width: 350px;
+        text-align: center;
+        padding: 15px;
+        background: #fef9e7;
+    }
+    .ftr-quantity-label { font-size: 8pt; color: #888; text-transform: uppercase; margin-bottom: 5px; }
+    .ftr-quantity-value { font-size: 22pt; font-weight: 700; color: #d35400; }
+    .ftr-quantity-unit { font-size: 9pt; color: #888; margin-top: 3px; }
+    .ftr-detail-grid { display: flex; gap: 10px; margin: 12px 0; }
+    .ftr-detail-box { flex: 1; border: 1px solid #ddd; overflow: hidden; }
+    .ftr-detail-title {
+        background: #d35400;
+        color: #fff;
+        padding: 4px 10px;
+        font-size: 8pt;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .ftr-detail-body { padding: 8px 10px; }
+    .ftr-detail-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dotted #e0e0e0; }
+    .ftr-detail-row:last-child { border-bottom: none; }
+    .ftr-detail-label { font-size: 8.5pt; color: #555; }
+    .ftr-detail-value { font-size: 9pt; font-weight: 600; color: #d35400; }
+    .ftr-footer {
+        margin-top: 25px;
+        border-top: 2px solid #d35400;
+        padding-top: 10px;
+    }
+    .ftr-signatures { display: flex; justify-content: space-between; margin-top: 40px; margin-bottom: 10px; }
+    .ftr-signature-block { text-align: center; width: 22%; }
+    .ftr-signature-line { border-top: 1px solid #333; padding-top: 5px; font-size: 8.5pt; font-weight: 600; color: #555; }
+    .ftr-page-info { text-align: center; font-size: 7.5pt; color: #999; margin-top: 10px; padding-top: 5px; border-top: 1px solid #e0e0e0; }
+    .ftr-page-number { text-align: center; font-size: 8pt; color: #999; margin-top: 2px; }
+    .ftr-watermark { font-size: 7pt; color: #ccc; text-align: center; margin-top: 3px; }
+</style>
+
+<div class="ftr-report">
+    <!-- HEADER -->
+    <div class="ftr-header">
+        <div class="ftr-header-top">
+            <div class="ftr-company-info">
+                <p class="ftr-company-name">{{ company_doc.company_name or company }}</p>
+                {% if company_doc.address %}
+                    <p class="ftr-company-address">{{ company_doc.address }}</p>
+                {% endif %}
+            </div>
+            <div class="ftr-pump-info">
+                <div class="ftr-pump-label">Transfer Route</div>
+                <p class="ftr-pump-name">{{ doc.from_petrol_pump }} &#10132; {{ doc.to_petrol_pump }}</p>
+                {% if company_doc.company_logo %}
+                    <img class="ftr-logo" src="{{ company_doc.company_logo }}" alt="Logo">
+                {% endif %}
+            </div>
+        </div>
+        <div class="ftr-title">FUEL TRANSFER VOUCHER</div>
+    </div>
+
+    <!-- DOCUMENT INFO -->
+    <div class="ftr-info-grid">
+        <div class="ftr-info-cell">
+            <div class="ftr-info-label">Document No</div>
+            <div class="ftr-info-value">{{ doc.name }}</div>
+        </div>
+        <div class="ftr-info-cell">
+            <div class="ftr-info-label">Transfer Date</div>
+            <div class="ftr-info-value">{{ frappe.format_value(doc.transfer_date, {"fieldtype": "Datetime"}) }}</div>
+        </div>
+        <div class="ftr-info-cell">
+            <div class="ftr-info-label">Fuel Type</div>
+            <div class="ftr-info-value">{{ fuel_name }}</div>
+        </div>
+        <div class="ftr-info-cell">
+            <div class="ftr-info-label">Status</div>
+            <div class="ftr-info-value">{{ "Submitted" if doc.docstatus == 1 else ("Cancelled" if doc.docstatus == 2 else "Draft") }}</div>
+        </div>
+    </div>
+
+    <!-- TRANSFER FLOW -->
+    <div class="ftr-section-title">Transfer Details</div>
+    <div class="ftr-transfer-box">
+        <div class="ftr-transfer-body">
+            <div class="ftr-transfer-flow">
+                <div class="ftr-location-card" style="border-color: #e74c3c;">
+                    <div class="ftr-location-type" style="color: #e74c3c;">Source (From)</div>
+                    <div class="ftr-location-pump">{{ doc.from_petrol_pump }}</div>
+                    <div class="ftr-location-tank">Tank: {{ from_tank_name }}</div>
+                </div>
+                <div class="ftr-arrow">&#10132;</div>
+                <div class="ftr-location-card" style="border-color: #27ae60;">
+                    <div class="ftr-location-type" style="color: #27ae60;">Destination (To)</div>
+                    <div class="ftr-location-pump">{{ doc.to_petrol_pump }}</div>
+                    <div class="ftr-location-tank">Tank: {{ to_tank_name }}</div>
+                </div>
+            </div>
+
+            <div class="ftr-quantity-box">
+                <div class="ftr-quantity-label">Quantity Transferred</div>
+                <div class="ftr-quantity-value">{{ frappe.format_value(doc.quantity, {"fieldtype": "Float", "precision": 2}) }}</div>
+                <div class="ftr-quantity-unit">Liters of {{ fuel_name }}</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADDITIONAL DETAILS -->
+    <div class="ftr-detail-grid">
+        <div class="ftr-detail-box">
+            <div class="ftr-detail-title">Transport Details</div>
+            <div class="ftr-detail-body">
+                <div class="ftr-detail-row">
+                    <span class="ftr-detail-label">Vehicle Number</span>
+                    <span class="ftr-detail-value">{{ doc.vehicle_number or "—" }}</span>
+                </div>
+                <div class="ftr-detail-row">
+                    <span class="ftr-detail-label">Fuel Type</span>
+                    <span class="ftr-detail-value">{{ fuel_name }}</span>
+                </div>
+                <div class="ftr-detail-row">
+                    <span class="ftr-detail-label">Quantity (Liters)</span>
+                    <span class="ftr-detail-value">{{ frappe.format_value(doc.quantity, {"fieldtype": "Float", "precision": 2}) }}</span>
+                </div>
+            </div>
+        </div>
+        {% if doc.stock_entry_ref %}
+        <div class="ftr-detail-box">
+            <div class="ftr-detail-title">Reference</div>
+            <div class="ftr-detail-body">
+                <div class="ftr-detail-row">
+                    <span class="ftr-detail-label">Stock Entry</span>
+                    <span class="ftr-detail-value">{{ doc.stock_entry_ref }}</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- FOOTER -->
+    <div class="ftr-footer">
+        <div class="ftr-signatures">
+            <div class="ftr-signature-block">
+                <div class="ftr-signature-line">Dispatched By</div>
+            </div>
+            <div class="ftr-signature-block">
+                <div class="ftr-signature-line">Driver</div>
+            </div>
+            <div class="ftr-signature-block">
+                <div class="ftr-signature-line">Received By</div>
+            </div>
+            <div class="ftr-signature-block">
+                <div class="ftr-signature-line">Approved By</div>
+            </div>
+        </div>
+        <div class="ftr-page-info">
+            {{ doc.name }} | {{ frappe.format_value(doc.transfer_date, {"fieldtype": "Datetime"}) }} | {{ fuel_name }}
+            <br>
+            Printed on {{ frappe.format_value(frappe.utils.now_datetime(), {"fieldtype": "Datetime"}) }} by {{ frappe.session.user }}
+        </div>
+        <div class="ftr-page-number">Page <span class="page-num"></span></div>
+        <div class="ftr-watermark">{{ company_doc.company_name or company }}</div>
+    </div>
+</div>

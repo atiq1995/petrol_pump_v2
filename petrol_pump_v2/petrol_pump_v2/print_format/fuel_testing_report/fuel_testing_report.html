@@ -1,0 +1,332 @@
+{%- set company = frappe.db.get_default("company") -%}
+{%- set company_doc = frappe.get_doc("Company", company) -%}
+
+<style>
+    @page {
+        size: A4;
+        margin: 12mm 10mm 20mm 10mm;
+        @bottom-center {
+            content: "Page " counter(page) " of " counter(pages);
+            font-size: 8pt;
+            color: #999;
+        }
+    }
+    @media print {
+        .print-format { padding: 0 !important; }
+    }
+    .ft-report {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        font-size: 10pt;
+        color: #333;
+        line-height: 1.4;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+    .ft-header {
+        border-bottom: 3px solid #7d3c98;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .ft-header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+    .ft-company-info { flex: 1; }
+    .ft-company-name { font-size: 18pt; font-weight: 700; color: #7d3c98; margin: 0; }
+    .ft-company-address { font-size: 8pt; color: #666; margin: 2px 0 0 0; }
+    .ft-pump-info { text-align: right; flex-shrink: 0; }
+    .ft-pump-name { font-size: 14pt; font-weight: 700; color: #7d3c98; margin: 0; }
+    .ft-pump-label { font-size: 7pt; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+    .ft-logo { max-height: 50px; max-width: 100px; margin-left: 15px; }
+    .ft-title {
+        text-align: center;
+        background: #7d3c98;
+        color: #fff;
+        padding: 6px 15px;
+        font-size: 13pt;
+        font-weight: 600;
+        letter-spacing: 1px;
+        margin: 8px 0;
+    }
+    .ft-info-grid {
+        display: flex;
+        flex-wrap: wrap;
+        border: 1px solid #ddd;
+        margin-bottom: 15px;
+    }
+    .ft-info-cell {
+        flex: 1 1 20%;
+        padding: 6px 10px;
+        border-right: 1px solid #ddd;
+        border-bottom: 1px solid #ddd;
+        min-width: 120px;
+    }
+    .ft-info-cell:last-child { border-right: none; }
+    .ft-info-label { font-size: 7pt; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .ft-info-value { font-size: 10pt; font-weight: 600; color: #7d3c98; }
+    .ft-section-title {
+        background: #f4ecf7;
+        border-left: 4px solid #7d3c98;
+        padding: 5px 10px;
+        font-size: 10pt;
+        font-weight: 700;
+        color: #7d3c98;
+        margin: 12px 0 6px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .ft-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+        font-size: 9pt;
+    }
+    .ft-table thead th {
+        background: #7d3c98;
+        color: #fff;
+        padding: 5px 8px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 8pt;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+    .ft-table thead th.text-right { text-align: right; }
+    .ft-table tbody td { padding: 4px 8px; border-bottom: 1px solid #e0e0e0; }
+    .ft-table tbody tr:nth-child(even) { background: #f9f9f9; }
+    .ft-table tfoot td {
+        padding: 5px 8px;
+        font-weight: 700;
+        background: #f4ecf7;
+        border-top: 2px solid #7d3c98;
+    }
+    .text-right { text-align: right !important; }
+    .text-center { text-align: center !important; }
+    .ft-result-badge {
+        display: inline-block;
+        padding: 4px 16px;
+        border-radius: 4px;
+        font-weight: 700;
+        font-size: 11pt;
+        letter-spacing: 1px;
+    }
+    .ft-result-pass { background: #d5f5e3; color: #1e8449; }
+    .ft-result-fail { background: #fadbd8; color: #e74c3c; }
+    .ft-result-pending { background: #fdebd0; color: #d35400; }
+    .ft-result-box {
+        border: 2px solid #7d3c98;
+        padding: 12px 20px;
+        margin: 12px 0;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .ft-result-label { font-size: 11pt; font-weight: 700; color: #7d3c98; }
+    .ft-remarks-text { font-size: 9.5pt; color: #555; font-style: italic; margin-top: 4px; }
+    .ft-summary-grid { display: flex; gap: 10px; margin: 12px 0; }
+    .ft-summary-box { flex: 1; border: 1px solid #ddd; overflow: hidden; }
+    .ft-summary-box-title {
+        background: #7d3c98;
+        color: #fff;
+        padding: 4px 10px;
+        font-size: 8pt;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .ft-summary-box-body { padding: 8px 10px; }
+    .ft-summary-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dotted #e0e0e0; }
+    .ft-summary-row:last-child { border-bottom: none; }
+    .ft-summary-row-label { font-size: 8.5pt; color: #555; }
+    .ft-summary-row-value { font-size: 9pt; font-weight: 600; color: #7d3c98; }
+    .ft-footer {
+        margin-top: 25px;
+        border-top: 2px solid #7d3c98;
+        padding-top: 10px;
+    }
+    .ft-signatures { display: flex; justify-content: space-between; margin-top: 40px; margin-bottom: 10px; }
+    .ft-signature-block { text-align: center; width: 30%; }
+    .ft-signature-line { border-top: 1px solid #333; padding-top: 5px; font-size: 8.5pt; font-weight: 600; color: #555; }
+    .ft-page-info { text-align: center; font-size: 7.5pt; color: #999; margin-top: 10px; padding-top: 5px; border-top: 1px solid #e0e0e0; }
+    .ft-page-number { text-align: center; font-size: 8pt; color: #999; margin-top: 2px; }
+    .ft-watermark { font-size: 7pt; color: #ccc; text-align: center; margin-top: 3px; }
+</style>
+
+<div class="ft-report">
+    <!-- HEADER -->
+    <div class="ft-header">
+        <div class="ft-header-top">
+            <div class="ft-company-info">
+                <p class="ft-company-name">{{ company_doc.company_name or company }}</p>
+                {% if company_doc.address %}
+                    <p class="ft-company-address">{{ company_doc.address }}</p>
+                {% endif %}
+            </div>
+            <div class="ft-pump-info">
+                <div class="ft-pump-label">Petrol Pump</div>
+                <p class="ft-pump-name">{{ doc.petrol_pump }}</p>
+                {% if company_doc.company_logo %}
+                    <img class="ft-logo" src="{{ company_doc.company_logo }}" alt="Logo">
+                {% endif %}
+            </div>
+        </div>
+        <div class="ft-title">FUEL TESTING REPORT</div>
+    </div>
+
+    <!-- DOCUMENT INFO -->
+    <div class="ft-info-grid">
+        <div class="ft-info-cell">
+            <div class="ft-info-label">Document No</div>
+            <div class="ft-info-value">{{ doc.name }}</div>
+        </div>
+        <div class="ft-info-cell">
+            <div class="ft-info-label">Test Date</div>
+            <div class="ft-info-value">{{ frappe.format_value(doc.test_date, {"fieldtype": "Date"}) }}</div>
+        </div>
+        <div class="ft-info-cell">
+            <div class="ft-info-label">Petrol Pump</div>
+            <div class="ft-info-value">{{ doc.petrol_pump }}</div>
+        </div>
+        <div class="ft-info-cell">
+            <div class="ft-info-label">Testing Purpose</div>
+            <div class="ft-info-value">{{ doc.testing_purpose or "—" }}</div>
+        </div>
+        <div class="ft-info-cell">
+            <div class="ft-info-label">Test Result</div>
+            <div class="ft-info-value">
+                {% if doc.test_result == "Pass" %}
+                    <span class="ft-result-badge ft-result-pass">PASS</span>
+                {% elif doc.test_result == "Fail" %}
+                    <span class="ft-result-badge ft-result-fail">FAIL</span>
+                {% else %}
+                    <span class="ft-result-badge ft-result-pending">PENDING</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- TESTING DETAILS -->
+    <div class="ft-section-title">Fuel Testing Details</div>
+    <table class="ft-table">
+        <thead>
+            <tr>
+                <th style="width:6%">#</th>
+                <th style="width:22%">Nozzle</th>
+                <th style="width:18%">Fuel Type</th>
+                <th class="text-right" style="width:15%">Liters</th>
+                <th class="text-right" style="width:17%">Rate</th>
+                <th class="text-right" style="width:22%">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set test_totals = {"liters": 0, "amount": 0} %}
+            {% for row in doc.fuel_testing_details %}
+            {% if test_totals.update({"liters": test_totals.liters + (row.test_liters or 0), "amount": test_totals.amount + (row.amount or 0)}) %}{% endif %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td>{{ frappe.db.get_value("Nozzle", row.nozzle, "nozzle_name") or row.nozzle }}</td>
+                <td>{{ frappe.db.get_value("Fuel Type", row.fuel_type, "fuel_type_name") or row.fuel_type or "—" }}</td>
+                <td class="text-right">{{ frappe.format_value(row.test_liters, {"fieldtype": "Float", "precision": 2}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.rate, {"fieldtype": "Currency"}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.amount, {"fieldtype": "Currency"}) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-right"><strong>Total</strong></td>
+                <td class="text-right"><strong>{{ frappe.format_value(test_totals.liters, {"fieldtype": "Float", "precision": 2}) }}</strong></td>
+                <td></td>
+                <td class="text-right"><strong>{{ frappe.format_value(test_totals.amount, {"fieldtype": "Currency"}) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- TEST RESULT -->
+    <div class="ft-result-box">
+        <div>
+            <span class="ft-result-label">Test Result:</span>
+        </div>
+        <div>
+            {% if doc.test_result == "Pass" %}
+                <span class="ft-result-badge ft-result-pass">PASS</span>
+            {% elif doc.test_result == "Fail" %}
+                <span class="ft-result-badge ft-result-fail">FAIL</span>
+            {% else %}
+                <span class="ft-result-badge ft-result-pending">PENDING</span>
+            {% endif %}
+        </div>
+    </div>
+    {% if doc.remarks %}
+    <div class="ft-remarks-text"><strong>Remarks:</strong> {{ doc.remarks }}</div>
+    {% endif %}
+
+    <!-- SUMMARY -->
+    <div class="ft-summary-grid">
+        <div class="ft-summary-box">
+            <div class="ft-summary-box-title">Test Summary</div>
+            <div class="ft-summary-box-body">
+                <div class="ft-summary-row">
+                    <span class="ft-summary-row-label">Total Test Liters</span>
+                    <span class="ft-summary-row-value">{{ frappe.format_value(doc.total_test_liters or test_totals.liters, {"fieldtype": "Float", "precision": 2}) }}</span>
+                </div>
+                <div class="ft-summary-row">
+                    <span class="ft-summary-row-label">Total Cost</span>
+                    <span class="ft-summary-row-value">{{ frappe.format_value(test_totals.amount, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                <div class="ft-summary-row">
+                    <span class="ft-summary-row-label">Total Nozzles Tested</span>
+                    <span class="ft-summary-row-value">{{ doc.fuel_testing_details|length }}</span>
+                </div>
+                <div class="ft-summary-row">
+                    <span class="ft-summary-row-label">Overall Result</span>
+                    <span class="ft-summary-row-value">
+                        {% if doc.test_result == "Pass" %}
+                            <span style="color:#1e8449;">{{ doc.test_result }}</span>
+                        {% elif doc.test_result == "Fail" %}
+                            <span style="color:#e74c3c;">{{ doc.test_result }}</span>
+                        {% else %}
+                            <span style="color:#d35400;">{{ doc.test_result or "Pending" }}</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+        {% if doc.stock_entry_ref %}
+        <div class="ft-summary-box">
+            <div class="ft-summary-box-title">Reference</div>
+            <div class="ft-summary-box-body">
+                <div class="ft-summary-row">
+                    <span class="ft-summary-row-label">Stock Entry</span>
+                    <span class="ft-summary-row-value">{{ doc.stock_entry_ref }}</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- FOOTER -->
+    <div class="ft-footer">
+        <div class="ft-signatures">
+            <div class="ft-signature-block">
+                <div class="ft-signature-line">Tested By</div>
+            </div>
+            <div class="ft-signature-block">
+                <div class="ft-signature-line">Quality Inspector</div>
+            </div>
+            <div class="ft-signature-block">
+                <div class="ft-signature-line">Manager</div>
+            </div>
+        </div>
+        <div class="ft-page-info">
+            {{ doc.name }} | {{ frappe.format_value(doc.test_date, {"fieldtype": "Date"}) }} | {{ doc.petrol_pump }}
+            <br>
+            Printed on {{ frappe.format_value(frappe.utils.now_datetime(), {"fieldtype": "Datetime"}) }} by {{ frappe.session.user }}
+        </div>
+        <div class="ft-page-number">Page <span class="page-num"></span></div>
+        <div class="ft-watermark">{{ company_doc.company_name or company }}</div>
+    </div>
+</div>

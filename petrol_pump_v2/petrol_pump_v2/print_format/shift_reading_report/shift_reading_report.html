@@ -1,0 +1,295 @@
+{%- set company = frappe.db.get_default("company") -%}
+{%- set company_doc = frappe.get_doc("Company", company) -%}
+
+<style>
+    @page {
+        size: A4;
+        margin: 12mm 10mm 20mm 10mm;
+        @bottom-center {
+            content: "Page " counter(page) " of " counter(pages);
+            font-size: 8pt;
+            color: #999;
+        }
+    }
+    @media print {
+        .print-format { padding: 0 !important; }
+        .page-break { page-break-before: always; }
+    }
+    .sr-report {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        font-size: 10pt;
+        color: #333;
+        line-height: 1.4;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+    .sr-header {
+        border-bottom: 3px solid #1a5276;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .sr-header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+    .sr-company-info { flex: 1; }
+    .sr-company-name {
+        font-size: 18pt;
+        font-weight: 700;
+        color: #1a5276;
+        margin: 0;
+    }
+    .sr-company-address {
+        font-size: 8pt;
+        color: #666;
+        margin: 2px 0 0 0;
+    }
+    .sr-pump-info { text-align: right; flex-shrink: 0; }
+    .sr-pump-name { font-size: 14pt; font-weight: 700; color: #1a5276; margin: 0; }
+    .sr-pump-label { font-size: 7pt; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+    .sr-logo { max-height: 50px; max-width: 100px; margin-left: 15px; }
+    .sr-title {
+        text-align: center;
+        background: #1a5276;
+        color: #fff;
+        padding: 6px 15px;
+        font-size: 13pt;
+        font-weight: 600;
+        letter-spacing: 1px;
+        margin: 8px 0;
+    }
+    .sr-info-grid {
+        display: flex;
+        flex-wrap: wrap;
+        border: 1px solid #ddd;
+        margin-bottom: 15px;
+    }
+    .sr-info-cell {
+        flex: 1 1 25%;
+        padding: 6px 10px;
+        border-right: 1px solid #ddd;
+        border-bottom: 1px solid #ddd;
+        min-width: 140px;
+    }
+    .sr-info-cell:last-child { border-right: none; }
+    .sr-info-label { font-size: 7pt; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .sr-info-value { font-size: 10pt; font-weight: 600; color: #1a5276; }
+    .sr-section-title {
+        background: #d6eaf8;
+        border-left: 4px solid #1a5276;
+        padding: 5px 10px;
+        font-size: 10pt;
+        font-weight: 700;
+        color: #1a5276;
+        margin: 12px 0 6px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .sr-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+        font-size: 9pt;
+    }
+    .sr-table thead th {
+        background: #1a5276;
+        color: #fff;
+        padding: 5px 8px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 8pt;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+    .sr-table thead th.text-right { text-align: right; }
+    .sr-table tbody td { padding: 4px 8px; border-bottom: 1px solid #e0e0e0; }
+    .sr-table tbody tr:nth-child(even) { background: #f9f9f9; }
+    .sr-table tfoot td {
+        padding: 5px 8px;
+        font-weight: 700;
+        background: #d6eaf8;
+        border-top: 2px solid #1a5276;
+    }
+    .text-right { text-align: right !important; }
+    .text-center { text-align: center !important; }
+    .sr-summary-grid { display: flex; gap: 10px; margin: 12px 0; }
+    .sr-summary-box { flex: 1; border: 1px solid #ddd; overflow: hidden; }
+    .sr-summary-box-title {
+        background: #1a5276;
+        color: #fff;
+        padding: 4px 10px;
+        font-size: 8pt;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .sr-summary-box-body { padding: 8px 10px; }
+    .sr-summary-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px dotted #e0e0e0; }
+    .sr-summary-row:last-child { border-bottom: none; }
+    .sr-summary-row-label { font-size: 8.5pt; color: #555; }
+    .sr-summary-row-value { font-size: 9pt; font-weight: 600; color: #1a5276; }
+    .sr-summary-row.highlight { background: #d6eaf8; margin: 3px -10px; padding: 5px 10px; }
+    .sr-footer {
+        margin-top: 25px;
+        border-top: 2px solid #1a5276;
+        padding-top: 10px;
+    }
+    .sr-signatures { display: flex; justify-content: space-between; margin-top: 40px; margin-bottom: 10px; }
+    .sr-signature-block { text-align: center; width: 30%; }
+    .sr-signature-line { border-top: 1px solid #333; padding-top: 5px; font-size: 8.5pt; font-weight: 600; color: #555; }
+    .sr-page-info { text-align: center; font-size: 7.5pt; color: #999; margin-top: 10px; padding-top: 5px; border-top: 1px solid #e0e0e0; }
+    .sr-page-number { text-align: center; font-size: 8pt; color: #999; margin-top: 2px; }
+    .sr-watermark { font-size: 7pt; color: #ccc; text-align: center; margin-top: 3px; }
+</style>
+
+<div class="sr-report">
+    <!-- HEADER -->
+    <div class="sr-header">
+        <div class="sr-header-top">
+            <div class="sr-company-info">
+                <p class="sr-company-name">{{ company_doc.company_name or company }}</p>
+                {% if company_doc.address %}
+                    <p class="sr-company-address">{{ company_doc.address }}</p>
+                {% endif %}
+            </div>
+            <div class="sr-pump-info">
+                <div class="sr-pump-label">Petrol Pump</div>
+                <p class="sr-pump-name">{{ doc.petrol_pump }}</p>
+                {% if company_doc.company_logo %}
+                    <img class="sr-logo" src="{{ company_doc.company_logo }}" alt="Logo">
+                {% endif %}
+            </div>
+        </div>
+        <div class="sr-title">SHIFT READING REPORT</div>
+    </div>
+
+    <!-- DOCUMENT INFO -->
+    <div class="sr-info-grid">
+        <div class="sr-info-cell">
+            <div class="sr-info-label">Document No</div>
+            <div class="sr-info-value">{{ doc.name }}</div>
+        </div>
+        <div class="sr-info-cell">
+            <div class="sr-info-label">Reading Date</div>
+            <div class="sr-info-value">{{ frappe.format_value(doc.reading_date, {"fieldtype": "Date"}) }}</div>
+        </div>
+        <div class="sr-info-cell">
+            <div class="sr-info-label">Shift</div>
+            <div class="sr-info-value">{{ doc.shift or "—" }}</div>
+        </div>
+        <div class="sr-info-cell">
+            <div class="sr-info-label">Employee</div>
+            <div class="sr-info-value">{{ doc.employee or "—" }}</div>
+        </div>
+        <div class="sr-info-cell">
+            <div class="sr-info-label">Petrol Pump</div>
+            <div class="sr-info-value">{{ doc.petrol_pump }}</div>
+        </div>
+        <div class="sr-info-cell">
+            <div class="sr-info-label">Status</div>
+            <div class="sr-info-value">{{ "Submitted" if doc.docstatus == 1 else ("Cancelled" if doc.docstatus == 2 else "Draft") }}</div>
+        </div>
+    </div>
+
+    <!-- NOZZLE READINGS -->
+    <div class="sr-section-title">Nozzle Readings</div>
+    <table class="sr-table">
+        <thead>
+            <tr>
+                <th style="width:5%">#</th>
+                <th style="width:18%">Nozzle</th>
+                <th style="width:14%">Fuel Type</th>
+                <th class="text-right" style="width:14%">Previous</th>
+                <th class="text-right" style="width:14%">Current</th>
+                <th class="text-right" style="width:12%">Liters</th>
+                <th class="text-right" style="width:11%">Rate</th>
+                <th class="text-right" style="width:12%">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set totals = {"liters": 0, "amount": 0} %}
+            {% for row in doc.nozzle_readings %}
+            {% if totals.update({"liters": totals.liters + (row.dispensed_liters or 0), "amount": totals.amount + (row.amount or 0)}) %}{% endif %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td>{{ row.nozzle_number }}</td>
+                <td>{{ frappe.db.get_value("Fuel Type", row.fuel_type, "fuel_type_name") or row.fuel_type or "—" }}</td>
+                <td class="text-right">{{ frappe.format_value(row.previous_reading, {"fieldtype": "Float", "precision": 2}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.current_reading, {"fieldtype": "Float", "precision": 2}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.dispensed_liters, {"fieldtype": "Float", "precision": 2}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.rate, {"fieldtype": "Currency"}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.amount, {"fieldtype": "Currency"}) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="5" class="text-right"><strong>Total</strong></td>
+                <td class="text-right"><strong>{{ frappe.format_value(totals.liters, {"fieldtype": "Float", "precision": 2}) }}</strong></td>
+                <td></td>
+                <td class="text-right"><strong>{{ frappe.format_value(totals.amount, {"fieldtype": "Currency"}) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- SALES SUMMARY -->
+    <div class="sr-summary-grid">
+        <div class="sr-summary-box">
+            <div class="sr-summary-box-title">Shift Sales Summary</div>
+            <div class="sr-summary-box-body">
+                <div class="sr-summary-row highlight">
+                    <span class="sr-summary-row-label" style="font-weight:700;">Total Sales (from Nozzles)</span>
+                    <span class="sr-summary-row-value" style="font-size:11pt;">{{ frappe.format_value(totals.amount, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                <div class="sr-summary-row">
+                    <span class="sr-summary-row-label">Total Liters Dispensed</span>
+                    <span class="sr-summary-row-value">{{ frappe.format_value(totals.liters, {"fieldtype": "Float", "precision": 2}) }}</span>
+                </div>
+                <div class="sr-summary-row">
+                    <span class="sr-summary-row-label">Total Sales (System)</span>
+                    <span class="sr-summary-row-value">{{ frappe.format_value(doc.total_sales, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                <div class="sr-summary-row">
+                    <span class="sr-summary-row-label">Total Liters (System)</span>
+                    <span class="sr-summary-row-value">{{ frappe.format_value(doc.total_liters, {"fieldtype": "Float", "precision": 2}) }}</span>
+                </div>
+            </div>
+        </div>
+        {% if doc.stock_entry_ref %}
+        <div class="sr-summary-box">
+            <div class="sr-summary-box-title">References</div>
+            <div class="sr-summary-box-body">
+                <div class="sr-summary-row">
+                    <span class="sr-summary-row-label">Stock Entry</span>
+                    <span class="sr-summary-row-value">{{ doc.stock_entry_ref }}</span>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- FOOTER -->
+    <div class="sr-footer">
+        <div class="sr-signatures">
+            <div class="sr-signature-block">
+                <div class="sr-signature-line">Shift Operator</div>
+            </div>
+            <div class="sr-signature-block">
+                <div class="sr-signature-line">Checked By</div>
+            </div>
+            <div class="sr-signature-block">
+                <div class="sr-signature-line">Manager</div>
+            </div>
+        </div>
+        <div class="sr-page-info">
+            {{ doc.name }} | {{ frappe.format_value(doc.reading_date, {"fieldtype": "Date"}) }} | {{ doc.petrol_pump }}
+            <br>
+            Printed on {{ frappe.format_value(frappe.utils.now_datetime(), {"fieldtype": "Datetime"}) }} by {{ frappe.session.user }}
+        </div>
+        <div class="sr-page-number">Page <span class="page-num"></span></div>
+        <div class="sr-watermark">{{ company_doc.company_name or company }}</div>
+    </div>
+</div>

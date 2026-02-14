@@ -1,0 +1,243 @@
+{%- set company = frappe.db.get_default("company") -%}
+{%- set company_doc = frappe.get_doc("Company", company) -%}
+
+<style>
+    @page {
+        size: A4;
+        margin: 12mm 10mm 20mm 10mm;
+        @bottom-center {
+            content: "Page " counter(page) " of " counter(pages);
+            font-size: 8pt;
+            color: #999;
+        }
+    }
+    @media print {
+        .print-format { padding: 0 !important; }
+    }
+    .dip-report {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        font-size: 10pt;
+        color: #333;
+        line-height: 1.4;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+    .dip-header {
+        border-bottom: 3px solid #1e8449;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .dip-header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+    .dip-company-info { flex: 1; }
+    .dip-company-name { font-size: 18pt; font-weight: 700; color: #1e8449; margin: 0; }
+    .dip-company-address { font-size: 8pt; color: #666; margin: 2px 0 0 0; }
+    .dip-pump-info { text-align: right; flex-shrink: 0; }
+    .dip-pump-name { font-size: 14pt; font-weight: 700; color: #1e8449; margin: 0; }
+    .dip-pump-label { font-size: 7pt; color: #888; text-transform: uppercase; letter-spacing: 0.5px; }
+    .dip-logo { max-height: 50px; max-width: 100px; margin-left: 15px; }
+    .dip-title {
+        text-align: center;
+        background: #1e8449;
+        color: #fff;
+        padding: 6px 15px;
+        font-size: 13pt;
+        font-weight: 600;
+        letter-spacing: 1px;
+        margin: 8px 0;
+    }
+    .dip-info-grid {
+        display: flex;
+        flex-wrap: wrap;
+        border: 1px solid #ddd;
+        margin-bottom: 15px;
+    }
+    .dip-info-cell {
+        flex: 1 1 25%;
+        padding: 6px 10px;
+        border-right: 1px solid #ddd;
+        border-bottom: 1px solid #ddd;
+        min-width: 140px;
+    }
+    .dip-info-cell:last-child { border-right: none; }
+    .dip-info-label { font-size: 7pt; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 2px; }
+    .dip-info-value { font-size: 10pt; font-weight: 600; color: #1e8449; }
+    .dip-section-title {
+        background: #d5f5e3;
+        border-left: 4px solid #1e8449;
+        padding: 5px 10px;
+        font-size: 10pt;
+        font-weight: 700;
+        color: #1e8449;
+        margin: 12px 0 6px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .dip-reading-box { border: 1px solid #ddd; margin-bottom: 15px; overflow: hidden; }
+    .dip-reading-title {
+        background: #1e8449;
+        color: #fff;
+        padding: 6px 12px;
+        font-size: 9pt;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    .dip-reading-body { padding: 15px; }
+    .dip-reading-grid { display: flex; gap: 15px; }
+    .dip-reading-card {
+        flex: 1;
+        text-align: center;
+        border: 1px solid #e0e0e0;
+        padding: 12px;
+        background: #f9f9f9;
+    }
+    .dip-reading-card-label { font-size: 8pt; color: #888; text-transform: uppercase; margin-bottom: 5px; }
+    .dip-reading-card-value { font-size: 16pt; font-weight: 700; color: #1e8449; }
+    .dip-diff-positive { color: #27ae60 !important; }
+    .dip-diff-negative { color: #e74c3c !important; }
+    .dip-diff-zero { color: #2c3e50 !important; }
+    .dip-remarks-box {
+        border: 1px solid #e0e0e0;
+        padding: 10px 12px;
+        background: #fdfefe;
+        font-size: 9pt;
+        color: #555;
+        margin-top: 10px;
+        min-height: 40px;
+    }
+    .dip-remarks-label { font-size: 7pt; color: #888; text-transform: uppercase; margin-bottom: 3px; }
+    .dip-ref-box { display: flex; gap: 10px; margin-top: 12px; }
+    .dip-ref-item { flex: 1; border: 1px solid #ddd; padding: 8px 10px; }
+    .dip-ref-label { font-size: 7pt; color: #888; text-transform: uppercase; }
+    .dip-ref-value { font-size: 9pt; font-weight: 600; color: #1e8449; }
+    .dip-footer {
+        margin-top: 25px;
+        border-top: 2px solid #1e8449;
+        padding-top: 10px;
+    }
+    .dip-signatures { display: flex; justify-content: space-between; margin-top: 40px; margin-bottom: 10px; }
+    .dip-signature-block { text-align: center; width: 30%; }
+    .dip-signature-line { border-top: 1px solid #333; padding-top: 5px; font-size: 8.5pt; font-weight: 600; color: #555; }
+    .dip-page-info { text-align: center; font-size: 7.5pt; color: #999; margin-top: 10px; padding-top: 5px; border-top: 1px solid #e0e0e0; }
+    .dip-page-number { text-align: center; font-size: 8pt; color: #999; margin-top: 2px; }
+    .dip-watermark { font-size: 7pt; color: #ccc; text-align: center; margin-top: 3px; }
+</style>
+
+<div class="dip-report">
+    <!-- HEADER -->
+    <div class="dip-header">
+        <div class="dip-header-top">
+            <div class="dip-company-info">
+                <p class="dip-company-name">{{ company_doc.company_name or company }}</p>
+                {% if company_doc.address %}
+                    <p class="dip-company-address">{{ company_doc.address }}</p>
+                {% endif %}
+            </div>
+            <div class="dip-pump-info">
+                <div class="dip-pump-label">Petrol Pump</div>
+                <p class="dip-pump-name">{{ doc.petrol_pump }}</p>
+                {% if company_doc.company_logo %}
+                    <img class="dip-logo" src="{{ company_doc.company_logo }}" alt="Logo">
+                {% endif %}
+            </div>
+        </div>
+        <div class="dip-title">DIP READING REPORT</div>
+    </div>
+
+    <!-- DOCUMENT INFO -->
+    {%- set tank_name = frappe.db.get_value("Fuel Tank", doc.fuel_tank, "tank_name") or doc.fuel_tank -%}
+    {%- set tank_fuel = frappe.db.get_value("Fuel Tank", doc.fuel_tank, "fuel_type") -%}
+    {%- set fuel_name = frappe.db.get_value("Fuel Type", tank_fuel, "fuel_type_name") if tank_fuel else "" -%}
+    <div class="dip-info-grid">
+        <div class="dip-info-cell">
+            <div class="dip-info-label">Document No</div>
+            <div class="dip-info-value">{{ doc.name }}</div>
+        </div>
+        <div class="dip-info-cell">
+            <div class="dip-info-label">Reading Date</div>
+            <div class="dip-info-value">{{ frappe.format_value(doc.reading_date, {"fieldtype": "Date"}) }}</div>
+        </div>
+        <div class="dip-info-cell">
+            <div class="dip-info-label">Petrol Pump</div>
+            <div class="dip-info-value">{{ doc.petrol_pump }}</div>
+        </div>
+        <div class="dip-info-cell">
+            <div class="dip-info-label">Fuel Tank</div>
+            <div class="dip-info-value">{{ tank_name }}{% if fuel_name %} ({{ fuel_name }}){% endif %}</div>
+        </div>
+    </div>
+
+    <!-- DIP MEASUREMENT -->
+    <div class="dip-reading-box">
+        <div class="dip-reading-title">Stock Comparison — {{ tank_name }}{% if fuel_name %} ({{ fuel_name }}){% endif %}</div>
+        <div class="dip-reading-body">
+            <div class="dip-reading-grid">
+                <div class="dip-reading-card">
+                    <div class="dip-reading-card-label">Measured Dip (Physical)</div>
+                    <div class="dip-reading-card-value">{{ frappe.format_value(doc.measured_dip, {"fieldtype": "Float", "precision": 2}) }}</div>
+                    <div style="font-size:8pt; color:#888; margin-top:3px;">Liters</div>
+                </div>
+                <div class="dip-reading-card">
+                    <div class="dip-reading-card-label">System Stock</div>
+                    <div class="dip-reading-card-value">{{ frappe.format_value(doc.system_stock, {"fieldtype": "Float", "precision": 2}) }}</div>
+                    <div style="font-size:8pt; color:#888; margin-top:3px;">Liters</div>
+                </div>
+                <div class="dip-reading-card" style="border: 2px solid {% if (doc.difference or 0) == 0 %}#2c3e50{% elif (doc.difference or 0) > 0 %}#27ae60{% else %}#e74c3c{% endif %};">
+                    <div class="dip-reading-card-label">Difference</div>
+                    {% set diff = doc.difference or 0 %}
+                    <div class="dip-reading-card-value {% if diff == 0 %}dip-diff-zero{% elif diff > 0 %}dip-diff-positive{% else %}dip-diff-negative{% endif %}">
+                        {{ frappe.format_value(doc.difference, {"fieldtype": "Float", "precision": 2}) }}
+                    </div>
+                    <div style="font-size:8pt; color:#888; margin-top:3px;">
+                        {% if diff == 0 %}No Variance{% elif diff > 0 %}Excess{% else %}Short{% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {% if doc.remarks %}
+            <div class="dip-remarks-box">
+                <div class="dip-remarks-label">Remarks</div>
+                {{ doc.remarks }}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- REFERENCE -->
+    {% if doc.stock_reconciliation_ref %}
+    <div class="dip-section-title">Transaction Reference</div>
+    <div class="dip-ref-box">
+        <div class="dip-ref-item">
+            <div class="dip-ref-label">Stock Reconciliation</div>
+            <div class="dip-ref-value">{{ doc.stock_reconciliation_ref }}</div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- FOOTER -->
+    <div class="dip-footer">
+        <div class="dip-signatures">
+            <div class="dip-signature-block">
+                <div class="dip-signature-line">Measured By</div>
+            </div>
+            <div class="dip-signature-block">
+                <div class="dip-signature-line">Verified By</div>
+            </div>
+            <div class="dip-signature-block">
+                <div class="dip-signature-line">Manager</div>
+            </div>
+        </div>
+        <div class="dip-page-info">
+            {{ doc.name }} | {{ frappe.format_value(doc.reading_date, {"fieldtype": "Date"}) }} | {{ doc.petrol_pump }} | {{ tank_name }}
+            <br>
+            Printed on {{ frappe.format_value(frappe.utils.now_datetime(), {"fieldtype": "Datetime"}) }} by {{ frappe.session.user }}
+        </div>
+        <div class="dip-page-number">Page <span class="page-num"></span></div>
+        <div class="dip-watermark">{{ company_doc.company_name or company }}</div>
+    </div>
+</div>

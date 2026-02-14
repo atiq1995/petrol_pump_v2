@@ -1,0 +1,597 @@
+{%- set company = frappe.db.get_default("company") -%}
+{%- set company_doc = frappe.get_doc("Company", company) -%}
+
+<style>
+    @page {
+        size: A4;
+        margin: 12mm 10mm 20mm 10mm;
+        @bottom-center {
+            content: "Page " counter(page) " of " counter(pages);
+            font-size: 8pt;
+            color: #999;
+        }
+    }
+
+    @media print {
+        .print-format { padding: 0 !important; }
+        .page-break { page-break-before: always; }
+    }
+
+    .dc-report {
+        font-family: "Helvetica Neue", Arial, sans-serif;
+        font-size: 10pt;
+        color: #333;
+        line-height: 1.4;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+    }
+
+    .dc-header {
+        border-bottom: 3px solid #2c3e50;
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+    .dc-header-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 8px;
+    }
+    .dc-company-info { flex: 1; }
+    .dc-company-name {
+        font-size: 18pt;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+        letter-spacing: 0.5px;
+    }
+    .dc-company-address {
+        font-size: 8pt;
+        color: #666;
+        margin: 2px 0 0 0;
+    }
+    .dc-pump-info {
+        text-align: right;
+        flex-shrink: 0;
+    }
+    .dc-pump-name {
+        font-size: 14pt;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 0;
+    }
+    .dc-pump-label {
+        font-size: 7pt;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .dc-logo {
+        max-height: 50px;
+        max-width: 100px;
+        margin-left: 15px;
+    }
+    .dc-title {
+        text-align: center;
+        background: #2c3e50;
+        color: #fff;
+        padding: 6px 15px;
+        font-size: 13pt;
+        font-weight: 600;
+        letter-spacing: 1px;
+        margin: 8px 0;
+    }
+
+    .dc-info-grid {
+        display: flex;
+        flex-wrap: wrap;
+        border: 1px solid #ddd;
+        margin-bottom: 15px;
+    }
+    .dc-info-cell {
+        flex: 1 1 25%;
+        padding: 6px 10px;
+        border-right: 1px solid #ddd;
+        border-bottom: 1px solid #ddd;
+        min-width: 150px;
+    }
+    .dc-info-cell:last-child { border-right: none; }
+    .dc-info-label {
+        font-size: 7pt;
+        color: #888;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-bottom: 2px;
+    }
+    .dc-info-value {
+        font-size: 10pt;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .dc-section-title {
+        background: #ecf0f1;
+        border-left: 4px solid #2c3e50;
+        padding: 5px 10px;
+        font-size: 10pt;
+        font-weight: 700;
+        color: #2c3e50;
+        margin: 12px 0 6px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .dc-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 10px;
+        font-size: 9pt;
+    }
+    .dc-table thead th {
+        background: #2c3e50;
+        color: #fff;
+        padding: 5px 8px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 8pt;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+        white-space: nowrap;
+    }
+    .dc-table thead th.text-right { text-align: right; }
+    .dc-table tbody td {
+        padding: 4px 8px;
+        border-bottom: 1px solid #e0e0e0;
+    }
+    .dc-table tbody tr:nth-child(even) { background: #f9f9f9; }
+    .dc-table tfoot td {
+        padding: 5px 8px;
+        font-weight: 700;
+        background: #ecf0f1;
+        border-top: 2px solid #2c3e50;
+    }
+
+    .text-right { text-align: right !important; }
+    .text-center { text-align: center !important; }
+
+    .dc-summary-grid {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 12px;
+    }
+    .dc-summary-box {
+        flex: 1;
+        border: 1px solid #ddd;
+        padding: 0;
+        overflow: hidden;
+    }
+    .dc-summary-box-title {
+        background: #2c3e50;
+        color: #fff;
+        padding: 4px 10px;
+        font-size: 8pt;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.3px;
+    }
+    .dc-summary-box-body { padding: 8px 10px; }
+    .dc-summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 3px 0;
+        border-bottom: 1px dotted #e0e0e0;
+    }
+    .dc-summary-row:last-child { border-bottom: none; }
+    .dc-summary-row-label { font-size: 8.5pt; color: #555; }
+    .dc-summary-row-value { font-size: 9pt; font-weight: 600; color: #2c3e50; }
+    .dc-summary-row.highlight {
+        background: #eaf2e8;
+        margin: 3px -10px;
+        padding: 4px 10px;
+    }
+    .dc-summary-row.highlight .dc-summary-row-value {
+        color: #27ae60;
+        font-size: 10pt;
+    }
+
+    .dc-stock-text {
+        font-size: 9pt;
+        color: #555;
+        white-space: pre-line;
+        border: 1px solid #e0e0e0;
+        padding: 8px 10px;
+        background: #f9f9f9;
+        margin-bottom: 10px;
+    }
+
+    .dc-footer {
+        margin-top: 25px;
+        border-top: 2px solid #2c3e50;
+        padding-top: 10px;
+    }
+    .dc-signatures {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 40px;
+        margin-bottom: 10px;
+    }
+    .dc-signature-block { text-align: center; width: 30%; }
+    .dc-signature-line {
+        border-top: 1px solid #333;
+        padding-top: 5px;
+        font-size: 8.5pt;
+        font-weight: 600;
+        color: #555;
+    }
+    .dc-page-info {
+        text-align: center;
+        font-size: 7.5pt;
+        color: #999;
+        margin-top: 10px;
+        padding-top: 5px;
+        border-top: 1px solid #e0e0e0;
+    }
+    .dc-page-number {
+        text-align: center;
+        font-size: 8pt;
+        color: #999;
+        margin-top: 2px;
+    }
+    .dc-watermark {
+        font-size: 7pt;
+        color: #ccc;
+        text-align: center;
+        margin-top: 3px;
+    }
+
+    .variance-zero { color: #27ae60 !important; }
+    .variance-excess { color: #2980b9 !important; }
+    .variance-short { color: #e74c3c !important; }
+</style>
+
+<div class="dc-report">
+    <!-- HEADER -->
+    <div class="dc-header">
+        <div class="dc-header-top">
+            <div class="dc-company-info">
+                <p class="dc-company-name">{{ company_doc.company_name or company }}</p>
+                {% if company_doc.address %}
+                    <p class="dc-company-address">{{ company_doc.address }}</p>
+                {% endif %}
+                {% if company_doc.phone_no or company_doc.email %}
+                    <p class="dc-company-address">
+                        {% if company_doc.phone_no %}Tel: {{ company_doc.phone_no }}{% endif %}
+                        {% if company_doc.phone_no and company_doc.email %} | {% endif %}
+                        {% if company_doc.email %}Email: {{ company_doc.email }}{% endif %}
+                    </p>
+                {% endif %}
+            </div>
+            <div class="dc-pump-info">
+                <div class="dc-pump-label">Petrol Pump</div>
+                <p class="dc-pump-name">{{ doc.petrol_pump }}</p>
+                {% if company_doc.company_logo %}
+                    <img class="dc-logo" src="{{ company_doc.company_logo }}" alt="Logo">
+                {% endif %}
+            </div>
+        </div>
+        <div class="dc-title">DAY CLOSING REPORT</div>
+    </div>
+
+    <!-- DOCUMENT INFO -->
+    <div class="dc-info-grid">
+        <div class="dc-info-cell">
+            <div class="dc-info-label">Document No</div>
+            <div class="dc-info-value">{{ doc.name }}</div>
+        </div>
+        <div class="dc-info-cell">
+            <div class="dc-info-label">Reading Date</div>
+            <div class="dc-info-value">{{ frappe.format_value(doc.reading_date, {"fieldtype": "Date"}) }}</div>
+        </div>
+        <div class="dc-info-cell">
+            <div class="dc-info-label">Petrol Pump</div>
+            <div class="dc-info-value">{{ doc.petrol_pump }}</div>
+        </div>
+        <div class="dc-info-cell">
+            <div class="dc-info-label">Employee</div>
+            <div class="dc-info-value">{{ doc.employee or "—" }}</div>
+        </div>
+    </div>
+
+    <!-- NOZZLE READINGS -->
+    <div class="dc-section-title">Nozzle Readings</div>
+    <table class="dc-table">
+        <thead>
+            <tr>
+                <th style="width:5%">#</th>
+                <th style="width:18%">Nozzle</th>
+                <th style="width:14%">Fuel Type</th>
+                <th class="text-right" style="width:14%">Previous</th>
+                <th class="text-right" style="width:14%">Current</th>
+                <th class="text-right" style="width:12%">Liters</th>
+                <th class="text-right" style="width:11%">Rate</th>
+                <th class="text-right" style="width:12%">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set nozzle_totals = {"liters": 0, "amount": 0} %}
+            {% for row in doc.nozzle_readings %}
+            {% if nozzle_totals.update({"liters": nozzle_totals.liters + (row.dispensed_liters or 0), "amount": nozzle_totals.amount + (row.amount or 0)}) %}{% endif %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td>{{ row.nozzle_number }}</td>
+                <td>{{ frappe.db.get_value("Fuel Type", row.fuel_type, "fuel_type_name") or row.fuel_type or "—" }}</td>
+                <td class="text-right">{{ frappe.format_value(row.previous_reading, {"fieldtype": "Float", "precision": 2}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.current_reading, {"fieldtype": "Float", "precision": 2}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.dispensed_liters, {"fieldtype": "Float", "precision": 2}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.rate, {"fieldtype": "Currency"}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.amount, {"fieldtype": "Currency"}) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="5" class="text-right"><strong>Total</strong></td>
+                <td class="text-right"><strong>{{ frappe.format_value(nozzle_totals.liters, {"fieldtype": "Float", "precision": 2}) }}</strong></td>
+                <td></td>
+                <td class="text-right"><strong>{{ frappe.format_value(nozzle_totals.amount, {"fieldtype": "Currency"}) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <!-- CREDIT SALES -->
+    {% if doc.credit_details and doc.credit_details|length > 0 %}
+    <div class="dc-section-title">Credit Sales</div>
+    <table class="dc-table">
+        <thead>
+            <tr>
+                <th style="width:5%">#</th>
+                <th style="width:30%">Customer</th>
+                <th style="width:15%">Fuel Type</th>
+                <th class="text-right" style="width:15%">Liters</th>
+                <th class="text-right" style="width:15%">Rate</th>
+                <th class="text-right" style="width:20%">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set credit_totals = {"liters": 0, "amount": 0} %}
+            {% for row in doc.credit_details %}
+            {% if credit_totals.update({"liters": credit_totals.liters + (row.liters or 0), "amount": credit_totals.amount + (row.amount or 0)}) %}{% endif %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td>{{ row.customer }}</td>
+                <td>{{ frappe.db.get_value("Fuel Type", row.fuel_type, "fuel_type_name") or row.fuel_type or "—" }}</td>
+                <td class="text-right">{{ frappe.format_value(row.liters, {"fieldtype": "Float", "precision": 2}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.rate, {"fieldtype": "Currency"}) }}</td>
+                <td class="text-right">{{ frappe.format_value(row.amount, {"fieldtype": "Currency"}) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-right"><strong>Total</strong></td>
+                <td class="text-right"><strong>{{ frappe.format_value(credit_totals.liters, {"fieldtype": "Float", "precision": 2}) }}</strong></td>
+                <td></td>
+                <td class="text-right"><strong>{{ frappe.format_value(credit_totals.amount, {"fieldtype": "Currency"}) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
+    <!-- EXPENSES -->
+    {% if doc.expenses and doc.expenses|length > 0 %}
+    <div class="dc-section-title">Expenses</div>
+    <table class="dc-table">
+        <thead>
+            <tr>
+                <th style="width:5%">#</th>
+                <th style="width:35%">Expense Account</th>
+                <th style="width:35%">Description</th>
+                <th class="text-right" style="width:25%">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set expense_total = {"amount": 0} %}
+            {% for row in doc.expenses %}
+            {% if expense_total.update({"amount": expense_total.amount + (row.amount or 0)}) %}{% endif %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td>{{ row.expense_account }}</td>
+                <td>{{ row.description or "—" }}</td>
+                <td class="text-right">{{ frappe.format_value(row.amount, {"fieldtype": "Currency"}) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-right"><strong>Total Expenses</strong></td>
+                <td class="text-right"><strong>{{ frappe.format_value(expense_total.amount, {"fieldtype": "Currency"}) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
+    <!-- CARD / POS COLLECTIONS -->
+    {% if doc.card_sales and doc.card_sales|length > 0 %}
+    <div class="dc-section-title">Card / POS Collections</div>
+    <table class="dc-table">
+        <thead>
+            <tr>
+                <th style="width:5%">#</th>
+                <th style="width:30%">Bank</th>
+                <th style="width:35%">Bank Account</th>
+                <th class="text-right" style="width:30%">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set card_total = {"amount": 0} %}
+            {% for row in doc.card_sales %}
+            {% if card_total.update({"amount": card_total.amount + (row.amount or 0)}) %}{% endif %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td>{{ row.bank }}</td>
+                <td>{{ row.bank_account }}</td>
+                <td class="text-right">{{ frappe.format_value(row.amount, {"fieldtype": "Currency"}) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-right"><strong>Total Card/POS</strong></td>
+                <td class="text-right"><strong>{{ frappe.format_value(card_total.amount, {"fieldtype": "Currency"}) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
+    <!-- SALES SUMMARY & PAYMENT COLLECTION -->
+    <div class="dc-summary-grid">
+        <div class="dc-summary-box">
+            <div class="dc-summary-box-title">Sales Summary</div>
+            <div class="dc-summary-box-body">
+                <div class="dc-summary-row" style="background:#eaf2e8; margin:0 -10px 3px -10px; padding:5px 10px;">
+                    <span class="dc-summary-row-label" style="font-weight:700;">Total Sales (from Nozzles)</span>
+                    <span class="dc-summary-row-value" style="font-size:10pt; color:#27ae60;">{{ frappe.format_value(nozzle_totals.amount, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Total Liters (from Nozzles)</span>
+                    <span class="dc-summary-row-value">{{ frappe.format_value(nozzle_totals.liters, {"fieldtype": "Float", "precision": 2}) }}</span>
+                </div>
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Total Sales (System)</span>
+                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.total_sales, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Total Liters (System)</span>
+                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.total_liters, {"fieldtype": "Float", "precision": 2}) }}</span>
+                </div>
+                {% if doc.credit_sales_liters %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Credit Liters</span>
+                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.credit_sales_liters, {"fieldtype": "Float", "precision": 2}) }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        <div class="dc-summary-box">
+            <div class="dc-summary-box-title">Payment Collection</div>
+            <div class="dc-summary-box-body">
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Cash Collected</span>
+                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.cash_amount, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Card/POS Amount</span>
+                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.card_amount, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Credit Sales Amount</span>
+                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.credit_amount, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                {% if doc.total_expenses %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Total Expenses</span>
+                    <span class="dc-summary-row-value" style="color:#e74c3c;">({{ frappe.format_value(doc.total_expenses, {"fieldtype": "Currency"}) }})</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- RECONCILIATION -->
+    <div class="dc-section-title">Cash Reconciliation</div>
+    <div class="dc-summary-grid">
+        <div class="dc-summary-box" style="flex: 1;">
+            <div class="dc-summary-box-title">Reconciliation Details</div>
+            <div class="dc-summary-box-body">
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Total Payments Received</span>
+                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.total_payments_received, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Expected to Collect</span>
+                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.expected_to_collect, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Expected Collection (after expenses)</span>
+                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.expected_collection, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Net Cash After Expenses</span>
+                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.net_cash_after_expenses, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                <div class="dc-summary-row highlight">
+                    <span class="dc-summary-row-label" style="font-weight:700;font-size:10pt;">Cash Variance</span>
+                    {% set variance = doc.cash_variance or 0 %}
+                    <span class="dc-summary-row-value {% if variance == 0 %}variance-zero{% elif variance > 0 %}variance-excess{% else %}variance-short{% endif %}" style="font-size:11pt;">
+                        {{ frappe.format_value(doc.cash_variance, {"fieldtype": "Currency"}) }}
+                        {% if variance == 0 %} &#10003;{% elif variance > 0 %} (Excess){% else %} (Short){% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- AVAILABLE STOCK -->
+    {% if doc.available_stock %}
+    <div class="dc-section-title">Available Stock (by Tank)</div>
+    <div class="dc-stock-text">{{ doc.available_stock }}</div>
+    {% endif %}
+
+    <!-- TRANSACTION REFERENCES -->
+    {% if doc.docstatus == 1 %}
+    <div class="dc-section-title">Transaction References</div>
+    <div class="dc-summary-grid">
+        <div class="dc-summary-box" style="flex: 1;">
+            <div class="dc-summary-box-body" style="font-size: 8pt; color: #666;">
+                {% if doc.stock_entry_ref %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Stock Entry</span>
+                    <span class="dc-summary-row-value" style="font-size: 8pt;">{{ doc.stock_entry_ref }}</span>
+                </div>
+                {% endif %}
+                {% if doc.sales_invoice_ref %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Sales Invoice(s)</span>
+                    <span class="dc-summary-row-value" style="font-size: 8pt;">{{ doc.sales_invoice_ref }}</span>
+                </div>
+                {% endif %}
+                {% if doc.payment_entry_ref %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Payment Entry(s)</span>
+                    <span class="dc-summary-row-value" style="font-size: 8pt;">{{ doc.payment_entry_ref }}</span>
+                </div>
+                {% endif %}
+                {% if doc.expense_payment_entries_ref %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Expense Journal(s)</span>
+                    <span class="dc-summary-row-value" style="font-size: 8pt;">{{ doc.expense_payment_entries_ref }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- FOOTER -->
+    <div class="dc-footer">
+        <div class="dc-signatures">
+            <div class="dc-signature-block">
+                <div class="dc-signature-line">Prepared By</div>
+            </div>
+            <div class="dc-signature-block">
+                <div class="dc-signature-line">Checked By</div>
+            </div>
+            <div class="dc-signature-block">
+                <div class="dc-signature-line">Approved By</div>
+            </div>
+        </div>
+        <div class="dc-page-info">
+            {{ doc.name }} | {{ frappe.format_value(doc.reading_date, {"fieldtype": "Date"}) }} | {{ doc.petrol_pump }}
+            <br>
+            Printed on {{ frappe.format_value(frappe.utils.now_datetime(), {"fieldtype": "Datetime"}) }} by {{ frappe.session.user }}
+        </div>
+        <div class="dc-page-number">Page <span class="page-num"></span></div>
+        <div class="dc-watermark">{{ company_doc.company_name or company }}</div>
+    </div>
+</div>

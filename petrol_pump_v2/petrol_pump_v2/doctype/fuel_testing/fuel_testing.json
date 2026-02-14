@@ -16,7 +16,13 @@
   "petrol_pump",
   "testing_purpose",
   "fuel_testing_details",
-  "total_test_liters"
+  "total_test_liters",
+  "section_break_result",
+  "test_result",
+  "column_break_result",
+  "remarks",
+  "section_break_ref",
+  "stock_entry_ref"
  ],
  "fields": [
   {
@@ -62,6 +68,36 @@
    "read_only": 1
   },
   {
+   "fieldname": "section_break_result",
+   "fieldtype": "Section Break",
+   "label": "Test Result"
+  },
+  {
+   "fieldname": "test_result",
+   "fieldtype": "Select",
+   "label": "Test Result",
+   "options": "\nPass\nFail\nPending",
+   "default": "Pending",
+   "reqd": 1,
+   "description": "Overall result of this fuel test"
+  },
+  {
+   "fieldname": "column_break_result",
+   "fieldtype": "Column Break"
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks",
+   "description": "Observations or notes about the test"
+  },
+  {
+   "fieldname": "section_break_ref",
+   "fieldtype": "Section Break",
+   "label": "References",
+   "collapsible": 1
+  },
+  {
    "fieldname": "stock_entry_ref",
    "fieldtype": "Link",
    "label": "Stock Entry Reference",
@@ -71,7 +107,7 @@
  ],
  "index_web_pages_for_search": 1,
  "links": [],
- "modified": "2024-01-01 00:00:00.000000",
+ "modified": "2026-02-14 17:00:00.000000",
  "modified_by": "Administrator",
  "module": "Petrol Pump V2",
  "name": "Fuel Testing",
