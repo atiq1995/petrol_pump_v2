@@ -409,51 +409,51 @@ class DayClosing(Document):
     
     def create_collection_payment_entries(self, sales_invoice, company):
         """Create separate Payment Entries for cash and card collections.
-        
-        - Cash PE: cash_amount + total_expenses → cash account
-          (actual cash collected from customers before expenses were paid out)
+
+        - Cash PE: cash from customers (sales minus credit minus card) → cash account
         - Card PEs: one per bank account → respective bank GL account
-          (card/POS collections deposited into bank accounts)
-        
+
         All PEs reference the same Cash Customer Sales Invoice.
         """
         company_currency = frappe.db.get_value("Company", company, "default_currency")
         default_receivable_account = frappe.get_cached_value("Company", company, "default_receivable_account")
-        
+
         created_pe_names = []
-        remaining_outstanding = flt(sales_invoice.outstanding_amount)
-        
+
         # --- 1. Cash Payment Entry ---
-        # cash_amount already = Total Sales - Credit - Card - Expenses - Suppliers
-        # Add back expenses & supplier payments to get gross cash from customers
+        # Gross cash from customers = Total Sales - Credit - Card
         cash_collection = flt(self.cash_amount) + flt(self.total_expenses) + flt(self.total_supplier_payments)
-        if cash_collection > 0 and remaining_outstanding > 0:
-            mode_of_payment = frappe.db.get_value("Mode of Payment", {"type": "Cash"}, "name") or "Cash"
-            cash_account = frappe.db.get_value(
-                "Mode of Payment Account",
-                {"parent": mode_of_payment, "company": company},
-                "default_account"
-            )
-            if not cash_account:
-                cash_account = frappe.get_cached_value("Company", company, "default_cash_account")
-            
-            allocate = min(flt(cash_collection), remaining_outstanding)
-            pe = self._make_payment_entry(
-                sales_invoice=sales_invoice,
-                company=company,
-                currency=company_currency,
-                paid_from=default_receivable_account,
-                paid_to=cash_account,
-                amount=cash_collection,
-                allocate_amount=allocate,
-                mode_of_payment=mode_of_payment,
-            )
-            created_pe_names.append(pe.name)
-            remaining_outstanding -= allocate
-            frappe.msgprint(f"Payment Entry {pe.name} created for cash collection: {cash_collection}")
-        
+
+        if cash_collection > 0:
+            # Reload SI to get fresh outstanding
+            sales_invoice.reload()
+            actual_outstanding = flt(sales_invoice.outstanding_amount)
+
+            if actual_outstanding > 0:
+                mode_of_payment = frappe.db.get_value("Mode of Payment", {"type": "Cash"}, "name") or "Cash"
+                cash_account = frappe.db.get_value(
+                    "Mode of Payment Account",
+                    {"parent": mode_of_payment, "company": company},
+                    "default_account"
+                )
+                if not cash_account:
+                    cash_account = frappe.get_cached_value("Company", company, "default_cash_account")
+
+                allocate = min(flt(cash_collection), actual_outstanding)
+                pe = self._make_payment_entry(
+                    sales_invoice=sales_invoice,
+                    company=company,
+                    currency=company_currency,
+                    paid_from=default_receivable_account,
+                    paid_to=cash_account,
+                    amount=allocate,
+                    mode_of_payment=mode_of_payment,
+                )
+                if pe:
+                    created_pe_names.append(pe.name)
+                    frappe.msgprint(f"Payment Entry {pe.name} created for cash collection: {allocate}")
+
         # --- 2. Card/POS Payment Entries (one per bank account) ---
-        # Group card_sales rows by bank_account
         card_by_bank = {}
         for row in getattr(self, "card_sales", []) or []:
             if not row.bank_account or flt(row.amount) <= 0:
@@ -461,48 +461,59 @@ class DayClosing(Document):
             if row.bank_account not in card_by_bank:
                 card_by_bank[row.bank_account] = 0
             card_by_bank[row.bank_account] += flt(row.amount)
-        
+
         for bank_account_name, card_amount in card_by_bank.items():
-            if card_amount <= 0 or remaining_outstanding <= 0:
+            if card_amount <= 0:
                 continue
-            
-            # Get the GL account from the Bank Account document
+
+            # Reload SI to get fresh outstanding after previous PE
+            sales_invoice.reload()
+            actual_outstanding = flt(sales_invoice.outstanding_amount)
+            if actual_outstanding <= 0:
+                break
+
             gl_account = frappe.db.get_value("Bank Account", bank_account_name, "account")
             if not gl_account:
                 frappe.throw(
                     f"Bank Account '{bank_account_name}' does not have a linked GL Account. "
                     "Please set the Account field on the Bank Account."
                 )
-            
-            # Try to find a card/bank transfer mode of payment
+
             mode_of_payment = frappe.db.get_value(
                 "Mode of Payment", {"type": "Bank"}, "name"
             ) or "Bank Draft"
-            
-            allocate = min(flt(card_amount), remaining_outstanding)
+
+            allocate = min(flt(card_amount), actual_outstanding)
             pe = self._make_payment_entry(
                 sales_invoice=sales_invoice,
                 company=company,
                 currency=company_currency,
                 paid_from=default_receivable_account,
                 paid_to=gl_account,
-                amount=card_amount,
-                allocate_amount=allocate,
+                amount=allocate,
                 mode_of_payment=mode_of_payment,
             )
-            created_pe_names.append(pe.name)
-            remaining_outstanding -= allocate
-            
-            bank_label = frappe.db.get_value("Bank Account", bank_account_name, "bank") or bank_account_name
-            frappe.msgprint(f"Payment Entry {pe.name} created for card collection ({bank_label}): {card_amount}")
-        
+            if pe:
+                created_pe_names.append(pe.name)
+                bank_label = frappe.db.get_value("Bank Account", bank_account_name, "bank") or bank_account_name
+                frappe.msgprint(f"Payment Entry {pe.name} created for card collection ({bank_label}): {allocate}")
+
         # Store all PE references (comma-separated) for cancellation
         if created_pe_names:
             self.db_set('payment_entry_ref', ', '.join(created_pe_names))
-    
+
     def _make_payment_entry(self, sales_invoice, company, currency, paid_from,
-                            paid_to, amount, allocate_amount, mode_of_payment):
+                            paid_to, amount, mode_of_payment):
         """Helper to create and submit a single Payment Entry."""
+        # Get the latest outstanding from DB to avoid stale data
+        actual_outstanding = flt(
+            frappe.db.get_value("Sales Invoice", sales_invoice.name, "outstanding_amount")
+        )
+        allocate = min(flt(amount), actual_outstanding)
+
+        if allocate <= 0:
+            return None
+
         pe = frappe.new_doc("Payment Entry")
         pe.payment_type = "Receive"
         pe.party_type = "Customer"
@@ -510,29 +521,29 @@ class DayClosing(Document):
         pe.company = company
         pe.cost_center = self.get_pump_cost_center()
         pe.posting_date = self.reading_date or nowdate()
-        
+
         pe.paid_from_account_currency = currency
         pe.paid_to_account_currency = currency
         pe.source_exchange_rate = 1.0
         pe.target_exchange_rate = 1.0
-        
+
         pe.paid_from = paid_from
         pe.paid_to = paid_to
-        
-        pe.paid_amount = flt(amount)
-        pe.received_amount = flt(amount)
+
+        pe.paid_amount = flt(allocate)
+        pe.received_amount = flt(allocate)
         pe.mode_of_payment = mode_of_payment
         pe.reference_no = self.name
         pe.reference_date = self.reading_date or nowdate()
-        
+
         pe.append("references", {
             "reference_doctype": "Sales Invoice",
             "reference_name": sales_invoice.name,
-            "total_amount": sales_invoice.grand_total,
-            "outstanding_amount": flt(allocate_amount),
-            "allocated_amount": flt(allocate_amount),
+            "total_amount": flt(sales_invoice.grand_total),
+            "outstanding_amount": actual_outstanding,
+            "allocated_amount": flt(allocate),
         })
-        
+
         pe.insert()
         pe.submit()
         return pe
