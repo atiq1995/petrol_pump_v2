@@ -50,8 +50,9 @@ frappe.ui.form.on('Day Closing', {
       });
     }
     
-    // Recalculate total expenses on refresh
+    // Recalculate totals on refresh
     calculate_total_expenses(frm);
+    calculate_total_supplier_payments(frm);
   },
   petrol_pump(frm) {
     if (!frm.doc.petrol_pump) return;
@@ -67,9 +68,6 @@ frappe.ui.form.on('Day Closing', {
       populate_nozzles(frm);
       fetch_previous_cash(frm);
     }
-  },
-  cash_amount(frm) {
-    calculate_cash_reconciliation(frm);
   },
 });
 
@@ -158,6 +156,22 @@ frappe.ui.form.on('Day Closing Card Detail', {
   }
 });
 
+// Handle supplier payments child table
+frappe.ui.form.on('Day Closing Supplier Payment', {
+  amount(frm, cdt, cdn) {
+    calculate_total_supplier_payments(frm);
+    calculate_cash_reconciliation(frm);
+  },
+  supplier_payments_add(frm) {
+    calculate_total_supplier_payments(frm);
+    calculate_cash_reconciliation(frm);
+  },
+  supplier_payments_remove(frm) {
+    calculate_total_supplier_payments(frm);
+    calculate_cash_reconciliation(frm);
+  }
+});
+
 // Helper function to calculate amount
 function calculate_amount(frm, cdt, cdn) {
   const row = frappe.get_doc(cdt, cdn);
@@ -238,30 +252,32 @@ function calculate_credit_totals(frm) {
   frm.refresh_field('credit_amount');
 }
 
+function calculate_total_supplier_payments(frm) {
+  let total = 0;
+  if (frm.doc.supplier_payments && frm.doc.supplier_payments.length > 0) {
+    frm.doc.supplier_payments.forEach((row) => {
+      total += parseFloat(row.amount || 0);
+    });
+  }
+  frm.set_value('total_supplier_payments', total);
+  frm.refresh_field('total_supplier_payments');
+}
+
 function calculate_cash_reconciliation(frm) {
   const previous_cash = parseFloat(frm.doc.previous_cash || 0);
-  const cash_amount = parseFloat(frm.doc.cash_amount || 0);
-  const card_amount = parseFloat(frm.doc.card_amount || 0);
   const total_sales = parseFloat(frm.doc.total_sales || 0);
   const credit_amount = parseFloat(frm.doc.credit_amount || 0);
+  const card_amount = parseFloat(frm.doc.card_amount || 0);
   const total_expenses = parseFloat(frm.doc.total_expenses || 0);
+  const total_supplier_payments = parseFloat(frm.doc.total_supplier_payments || 0);
 
-  // Total Payments Received = Previous Cash + Cash Collected + Card
-  const total_payments_received = previous_cash + cash_amount + card_amount;
-  // Expected to Collect = Total Sales - Credit Sales
-  const expected_to_collect = total_sales - credit_amount;
-  // Expected Collection = Previous Cash + Expected to Collect - Expenses
-  const expected_collection = previous_cash + expected_to_collect - total_expenses;
-  // Net Cash After Expenses = Total Payments Received
-  const net_cash_after_expenses = total_payments_received;
-  // Cash Variance = Actual - Expected (should be 0 if correct)
-  const cash_variance = total_payments_received - expected_collection;
+  // Cash Amount = Total Sales - Credit - Card - Expenses - Supplier Payments
+  const cash_amount = total_sales - credit_amount - card_amount - total_expenses - total_supplier_payments;
+  // Cash in Hand = Previous Cash + Cash Amount
+  const cash_in_hand = previous_cash + cash_amount;
 
-  frm.set_value('total_payments_received', total_payments_received);
-  frm.set_value('expected_to_collect', expected_to_collect);
-  frm.set_value('expected_collection', expected_collection);
-  frm.set_value('net_cash_after_expenses', net_cash_after_expenses);
-  frm.set_value('cash_variance', cash_variance);
+  frm.set_value('cash_amount', cash_amount);
+  frm.set_value('cash_in_hand', cash_in_hand);
 
   frm.refresh_fields();
 }

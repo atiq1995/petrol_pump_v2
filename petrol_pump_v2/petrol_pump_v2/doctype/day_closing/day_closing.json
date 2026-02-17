@@ -17,6 +17,9 @@
   "section_break_expenses",
   "expenses",
   "total_expenses",
+  "section_break_supplier_payments",
+  "supplier_payments",
+  "total_supplier_payments",
   "section_break_card_sales",
   "card_sales",
   "section_break_sales",
@@ -28,19 +31,14 @@
   "card_amount",
   "column_break_cash",
   "credit_amount",
-  "section_break_reconciliation",
-  "total_payments_received",
-  "expected_to_collect",
-  "expected_collection",
-  "column_break_variance",
-  "net_cash_after_expenses",
-  "cash_variance",
+  "cash_in_hand",
   "section_break_references",
   "stock_entry_ref",
   "sales_invoice_ref",
   "column_break_ref",
   "payment_entry_ref",
   "expense_payment_entries_ref",
+  "supplier_payment_entries_ref",
   "workflow_state",
   "amended_from"
  ],
@@ -110,6 +108,25 @@
    "read_only": 1
   },
   {
+   "fieldname": "section_break_supplier_payments",
+   "fieldtype": "Section Break",
+   "label": "Supplier Payments"
+  },
+  {
+   "description": "Payments made to suppliers from today's cash",
+   "fieldname": "supplier_payments",
+   "fieldtype": "Table",
+   "label": "Supplier Payments",
+   "options": "Day Closing Supplier Payment"
+  },
+  {
+   "description": "Total supplier payments (auto-calculated)",
+   "fieldname": "total_supplier_payments",
+   "fieldtype": "Currency",
+   "label": "Total Supplier Payments",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_card_sales",
    "fieldtype": "Section Break",
    "label": "Card/POS Collections"
@@ -144,17 +161,18 @@
    "label": "Payment Collection"
   },
   {
-   "description": "Cash carried forward from the previous Day Closing (auto-populated)",
+   "description": "Cash In Hand GL balance for this pump (from Chart of Accounts)",
    "fieldname": "previous_cash",
    "fieldtype": "Currency",
-   "label": "Previous Cash",
+   "label": "Previous Cash Balance",
    "read_only": 1
   },
   {
-   "description": "Cash collected from today's sales",
+   "description": "Auto-calculated: Total Sales - Credit - Card - Expenses - Supplier Payments",
    "fieldname": "cash_amount",
    "fieldtype": "Currency",
-   "label": "Cash Collected"
+   "label": "Cash Amount",
+   "read_only": 1
   },
   {
    "description": "Total card/POS payments (auto-calculated from Card/POS Sales table)",
@@ -175,6 +193,13 @@
    "read_only": 1
   },
   {
+   "description": "Previous Cash + Cash Amount = closing cash balance at the pump",
+   "fieldname": "cash_in_hand",
+   "fieldtype": "Currency",
+   "label": "Cash in Hand",
+   "read_only": 1
+  },
+  {
    "fieldname": "section_break_expenses",
    "fieldtype": "Section Break",
    "label": "Expenses"
@@ -191,50 +216,6 @@
    "fieldname": "total_expenses",
    "fieldtype": "Currency",
    "label": "Total Expenses",
-   "read_only": 1
-  },
-  {
-   "fieldname": "section_break_reconciliation",
-   "fieldtype": "Section Break",
-   "label": "Reconciliation"
-  },
-  {
-   "description": "Total cash collected (Cash + Card). Expenses are subtracted only once below.",
-   "fieldname": "total_payments_received",
-   "fieldtype": "Currency",
-   "label": "Total Payments Received",
-   "read_only": 1
-  },
-  {
-   "description": "Total Sales - Credit Sales (expected from customers). Not subtracted from cash.",
-   "fieldname": "expected_to_collect",
-   "fieldtype": "Currency",
-   "label": "Expected to Collect",
-   "read_only": 1
-  },
-  {
-   "description": "Expected to Collect minus Expenses (once). Amount we expect to deposit.",
-   "fieldname": "expected_collection",
-   "fieldtype": "Currency",
-   "label": "Expected Collection",
-   "read_only": 1
-  },
-  {
-   "fieldname": "column_break_variance",
-   "fieldtype": "Column Break"
-  },
-  {
-   "description": "Total Payments Received minus Expenses (once). Actual amount to deposit.",
-   "fieldname": "net_cash_after_expenses",
-   "fieldtype": "Currency",
-   "label": "Net Cash After Expenses",
-   "read_only": 1
-  },
-  {
-   "description": "Net Cash After Expenses minus Expected Collection. Positive = excess, negative = short.",
-   "fieldname": "cash_variance",
-   "fieldtype": "Currency",
-   "label": "Cash Variance",
    "read_only": 1
   },
   {
@@ -274,6 +255,13 @@
    "fieldname": "expense_payment_entries_ref",
    "fieldtype": "Small Text",
    "label": "Expense Journal Entries",
+   "read_only": 1
+  },
+  {
+   "description": "Auto-created Payment Entries for supplier payments (comma-separated)",
+   "fieldname": "supplier_payment_entries_ref",
+   "fieldtype": "Small Text",
+   "label": "Supplier Payment Entries",
    "read_only": 1
   },
   {

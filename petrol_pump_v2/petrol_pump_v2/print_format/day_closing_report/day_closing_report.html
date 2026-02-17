@@ -411,6 +411,39 @@
     </table>
     {% endif %}
 
+    <!-- SUPPLIER PAYMENTS -->
+    {% if doc.supplier_payments and doc.supplier_payments|length > 0 %}
+    <div class="dc-section-title">Supplier Payments</div>
+    <table class="dc-table">
+        <thead>
+            <tr>
+                <th style="width:5%">#</th>
+                <th style="width:35%">Supplier</th>
+                <th style="width:35%">Reference / Remarks</th>
+                <th class="text-right" style="width:25%">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set supplier_total = {"amount": 0} %}
+            {% for row in doc.supplier_payments %}
+            {% if supplier_total.update({"amount": supplier_total.amount + (row.amount or 0)}) %}{% endif %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td>{{ row.supplier }}</td>
+                <td>{{ row.reference or "—" }}</td>
+                <td class="text-right">{{ frappe.format_value(row.amount, {"fieldtype": "Currency"}) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-right"><strong>Total Supplier Payments</strong></td>
+                <td class="text-right"><strong>{{ frappe.format_value(supplier_total.amount, {"fieldtype": "Currency"}) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
     <!-- CARD / POS COLLECTIONS -->
     {% if doc.card_sales and doc.card_sales|length > 0 %}
     <div class="dc-section-title">Card / POS Collections</div>
@@ -478,12 +511,12 @@
             <div class="dc-summary-box-body">
                 {% if doc.previous_cash %}
                 <div class="dc-summary-row">
-                    <span class="dc-summary-row-label">Previous Cash (Carried Forward)</span>
+                    <span class="dc-summary-row-label">Previous Cash Balance (GL)</span>
                     <span class="dc-summary-row-value" style="color:#8e44ad;">{{ frappe.format_value(doc.previous_cash, {"fieldtype": "Currency"}) }}</span>
                 </div>
                 {% endif %}
                 <div class="dc-summary-row">
-                    <span class="dc-summary-row-label">Cash Collected</span>
+                    <span class="dc-summary-row-label">Cash Amount</span>
                     <span class="dc-summary-row-value">{{ frappe.format_value(doc.cash_amount, {"fieldtype": "Currency"}) }}</span>
                 </div>
                 <div class="dc-summary-row">
@@ -500,39 +533,15 @@
                     <span class="dc-summary-row-value" style="color:#e74c3c;">({{ frappe.format_value(doc.total_expenses, {"fieldtype": "Currency"}) }})</span>
                 </div>
                 {% endif %}
-            </div>
-        </div>
-    </div>
-
-    <!-- RECONCILIATION -->
-    <div class="dc-section-title">Cash Reconciliation</div>
-    <div class="dc-summary-grid">
-        <div class="dc-summary-box" style="flex: 1;">
-            <div class="dc-summary-box-title">Reconciliation Details</div>
-            <div class="dc-summary-box-body">
+                {% if doc.total_supplier_payments %}
                 <div class="dc-summary-row">
-                    <span class="dc-summary-row-label">Total Payments Received</span>
-                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.total_payments_received, {"fieldtype": "Currency"}) }}</span>
+                    <span class="dc-summary-row-label">Total Supplier Payments</span>
+                    <span class="dc-summary-row-value" style="color:#e74c3c;">({{ frappe.format_value(doc.total_supplier_payments, {"fieldtype": "Currency"}) }})</span>
                 </div>
-                <div class="dc-summary-row">
-                    <span class="dc-summary-row-label">Expected to Collect</span>
-                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.expected_to_collect, {"fieldtype": "Currency"}) }}</span>
-                </div>
-                <div class="dc-summary-row">
-                    <span class="dc-summary-row-label">Expected Collection (after expenses)</span>
-                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.expected_collection, {"fieldtype": "Currency"}) }}</span>
-                </div>
-                <div class="dc-summary-row">
-                    <span class="dc-summary-row-label">Net Cash After Expenses</span>
-                    <span class="dc-summary-row-value">{{ frappe.format_value(doc.net_cash_after_expenses, {"fieldtype": "Currency"}) }}</span>
-                </div>
-                <div class="dc-summary-row highlight">
-                    <span class="dc-summary-row-label" style="font-weight:700;font-size:10pt;">Cash Variance</span>
-                    {% set variance = doc.cash_variance or 0 %}
-                    <span class="dc-summary-row-value {% if variance == 0 %}variance-zero{% elif variance > 0 %}variance-excess{% else %}variance-short{% endif %}" style="font-size:11pt;">
-                        {{ frappe.format_value(doc.cash_variance, {"fieldtype": "Currency"}) }}
-                        {% if variance == 0 %} &#10003;{% elif variance > 0 %} (Excess){% else %} (Short){% endif %}
-                    </span>
+                {% endif %}
+                <div class="dc-summary-row highlight" style="margin-top:5px;">
+                    <span class="dc-summary-row-label" style="font-weight:700; font-size:10pt;">Cash in Hand</span>
+                    <span class="dc-summary-row-value" style="color:#2980b9; font-size:11pt;">{{ frappe.format_value(doc.cash_in_hand, {"fieldtype": "Currency"}) }}</span>
                 </div>
             </div>
         </div>
@@ -572,6 +581,12 @@
                 <div class="dc-summary-row">
                     <span class="dc-summary-row-label">Expense Journal(s)</span>
                     <span class="dc-summary-row-value" style="font-size: 8pt;">{{ doc.expense_payment_entries_ref }}</span>
+                </div>
+                {% endif %}
+                {% if doc.supplier_payment_entries_ref %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Supplier Payment(s)</span>
+                    <span class="dc-summary-row-value" style="font-size: 8pt;">{{ doc.supplier_payment_entries_ref }}</span>
                 </div>
                 {% endif %}
             </div>

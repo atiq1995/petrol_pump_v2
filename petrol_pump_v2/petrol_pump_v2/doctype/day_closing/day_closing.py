@@ -66,13 +66,15 @@ class DayClosing(Document):
         self.calculate_readings()
         self.calculate_credit_totals()
         self.calculate_expense_totals()
+        self.calculate_supplier_payment_totals()
         self.calculate_card_totals()
         self.calculate_cash_reconciliation()
 
     def on_submit(self):
         self.create_stock_entry()
-        self.create_sales_invoices()  # Changed to plural - creates multiple invoices
-        self.create_expense_payment_entries()  # Create payment entries for expenses
+        self.create_sales_invoices()
+        self.create_expense_payment_entries()
+        self.create_supplier_payment_entries()
         self.update_nozzle_last_readings()
         self.set_approval_status()
     
@@ -82,11 +84,8 @@ class DayClosing(Document):
         self.revert_nozzle_readings()
     
     def set_approval_status(self):
-        """Set approval status based on cash variance"""
-        if abs(flt(self.cash_variance)) > 500:  # Configurable threshold
-            self.db_set('workflow_state', 'Pending Approval')
-        else:
-            self.db_set('workflow_state', 'Approved')
+        """Set approval status"""
+        self.db_set('workflow_state', 'Approved')
 
     def get_pump_cost_center(self):
         """Get cost center for this petrol pump, falling back to company default."""
@@ -141,32 +140,33 @@ class DayClosing(Document):
             total_card += flt(getattr(row, "amount", 0))
         self.card_amount = total_card
 
+    def calculate_supplier_payment_totals(self):
+        """Calculate total supplier payments from supplier_payments child table"""
+        total = 0.0
+        for row in getattr(self, "supplier_payments", []) or []:
+            total += flt(getattr(row, "amount", 0))
+        self.total_supplier_payments = total
+
     def calculate_cash_reconciliation(self):
-        """Cash reconciliation.
+        """Auto-calculate cash and cash-in-hand.
 
-        - Previous Cash = carried forward from last Day Closing
-        - Total Payments Received = Previous Cash + Cash Collected + Card
-        - Expected to Collect = Total Sales - Credit Sales
-        - Expected Collection = Previous Cash + Expected to Collect - Expenses
-        - Net Cash After Expenses = Total Payments Received
-        - Cash Variance = Total Payments Received - Expected Collection (should be 0 if correct)
+        Cash Amount = Total Sales - Credit - Card - Expenses - Supplier Payments
+        (whatever remains from nozzle sales after everything else is subtracted)
+
+        Cash in Hand = Previous Cash Balance (GL) + Cash Amount
+        (closing cash position at the pump)
         """
-        previous = flt(self.previous_cash)
+        # Cash = what's left after subtracting non-cash items and outflows
+        self.cash_amount = (
+            flt(self.total_sales)
+            - flt(self.credit_amount)
+            - flt(self.card_amount)
+            - flt(self.total_expenses)
+            - flt(self.total_supplier_payments)
+        )
 
-        # Total = previous day's cash + today's collections
-        self.total_payments_received = previous + flt(self.cash_amount) + flt(self.card_amount)
-
-        # Expected to collect from customers: Total Sales - Credit Sales
-        self.expected_to_collect = flt(self.total_sales) - flt(self.credit_amount)
-
-        # Expected cash = previous cash + expected collections - expenses
-        self.expected_collection = previous + flt(self.expected_to_collect) - flt(self.total_expenses)
-
-        # Net cash after expenses = total payments received
-        self.net_cash_after_expenses = flt(self.total_payments_received)
-
-        # Variance = actual - expected (0 means everything matches)
-        self.cash_variance = flt(self.total_payments_received) - flt(self.expected_collection)
+        # Cash in Hand = previous GL balance + today's net cash
+        self.cash_in_hand = flt(self.previous_cash) + flt(self.cash_amount)
 
     def calculate_credit_totals(self):
         """Aggregate credit liters and amount from credit_details child table.
@@ -423,8 +423,10 @@ class DayClosing(Document):
         created_pe_names = []
         remaining_outstanding = flt(sales_invoice.outstanding_amount)
         
-        # --- 1. Cash Payment Entry (cash collected + expenses paid from cash) ---
-        cash_collection = flt(self.cash_amount) + flt(self.total_expenses)
+        # --- 1. Cash Payment Entry ---
+        # cash_amount already = Total Sales - Credit - Card - Expenses - Suppliers
+        # Add back expenses & supplier payments to get gross cash from customers
+        cash_collection = flt(self.cash_amount) + flt(self.total_expenses) + flt(self.total_supplier_payments)
         if cash_collection > 0 and remaining_outstanding > 0:
             mode_of_payment = frappe.db.get_value("Mode of Payment", {"type": "Cash"}, "name") or "Cash"
             cash_account = frappe.db.get_value(
@@ -630,6 +632,74 @@ class DayClosing(Document):
         if created_journal_entries:
             self.db_set('expense_payment_entries_ref', ', '.join(created_journal_entries))
 
+    def create_supplier_payment_entries(self):
+        """Create Payment Entries (Pay type) for each supplier payment row.
+
+        Debits the supplier's default payable account and credits the cash account.
+        """
+        if not getattr(self, "supplier_payments", None) or not self.supplier_payments:
+            return
+
+        company = frappe.db.get_value("Petrol Pump", self.petrol_pump, "company")
+        if not company:
+            return
+
+        company_currency = frappe.db.get_value("Company", company, "default_currency")
+        default_payable_account = frappe.get_cached_value("Company", company, "default_payable_account")
+
+        # Get cash account
+        mode_of_payment = frappe.db.get_value("Mode of Payment", {"type": "Cash"}, "name") or "Cash"
+        cash_account = frappe.db.get_value(
+            "Mode of Payment Account",
+            {"parent": mode_of_payment, "company": company},
+            "default_account"
+        )
+        if not cash_account:
+            cash_account = frappe.get_cached_value("Company", company, "default_cash_account")
+
+        if not cash_account:
+            frappe.throw("Cash account not found. Please configure Mode of Payment or Company default cash account.")
+
+        cost_center = self.get_pump_cost_center()
+        created_pe_names = []
+
+        for row in self.supplier_payments:
+            if not row.supplier or flt(row.amount) <= 0:
+                continue
+
+            pe = frappe.new_doc("Payment Entry")
+            pe.payment_type = "Pay"
+            pe.party_type = "Supplier"
+            pe.party = row.supplier
+            pe.company = company
+            pe.cost_center = cost_center
+            pe.posting_date = self.reading_date or nowdate()
+
+            pe.paid_from = cash_account
+            pe.paid_to = default_payable_account
+            pe.paid_from_account_currency = company_currency
+            pe.paid_to_account_currency = company_currency
+            pe.source_exchange_rate = 1.0
+            pe.target_exchange_rate = 1.0
+
+            pe.paid_amount = flt(row.amount)
+            pe.received_amount = flt(row.amount)
+            pe.mode_of_payment = mode_of_payment
+            pe.reference_no = self.name
+            pe.reference_date = self.reading_date or nowdate()
+
+            pe.insert(ignore_permissions=True)
+            pe.submit()
+            created_pe_names.append(pe.name)
+
+            ref_text = f" ({row.reference})" if row.reference else ""
+            frappe.msgprint(
+                f"Payment Entry {pe.name} created for supplier {row.supplier}: {flt(row.amount)}{ref_text}"
+            )
+
+        if created_pe_names:
+            self.db_set('supplier_payment_entries_ref', ', '.join(created_pe_names))
+
     def update_nozzle_last_readings(self):
         """Update last_reading on Nozzle master when Day Closing is submitted.
 
@@ -680,7 +750,19 @@ class DayClosing(Document):
         """Cancel all auto-created transactions (Stock Entry, Sales Invoice, Payment Entry, Expense Payment Entries)"""
         errors = []
         
-        # Cancel Expense Journal Entries first (must be done before main payment entry)
+        # Cancel Supplier Payment Entries first
+        if getattr(self, "supplier_payment_entries_ref", None):
+            supplier_refs = [ref.strip() for ref in str(self.supplier_payment_entries_ref).split(',')]
+            for supplier_ref in supplier_refs:
+                try:
+                    pe = frappe.get_doc("Payment Entry", supplier_ref)
+                    if pe.docstatus == 1:
+                        pe.cancel()
+                        frappe.msgprint(f"Supplier Payment Entry {supplier_ref} cancelled")
+                except Exception as e:
+                    errors.append(f"Supplier Payment Entry {supplier_ref}: {str(e)}")
+
+        # Cancel Expense Journal Entries (must be done before main payment entry)
         if getattr(self, "expense_payment_entries_ref", None):
             expense_refs = [ref.strip() for ref in str(self.expense_payment_entries_ref).split(',')]
             for expense_ref in expense_refs:
@@ -886,7 +968,11 @@ def get_indirect_expense_accounts(doctype, txt, searchfield, start, page_len, fi
 
 @frappe.whitelist()
 def get_previous_cash(petrol_pump: str, reading_date: str = None):
-    """Get cash_amount from the last submitted Day Closing for this pump"""
+    """Get Cash In Hand GL balance for this pump's cost center.
+
+    Pulls the actual accounting balance of the cash account filtered by
+    the petrol pump's cost center, giving the real cash position.
+    """
     if not petrol_pump:
         return 0
 
@@ -896,14 +982,38 @@ def get_previous_cash(petrol_pump: str, reading_date: str = None):
     else:
         reading_date_obj = getdate(nowdate())
 
-    result = frappe.db.sql("""
-        SELECT cash_amount
-        FROM `tabDay Closing`
-        WHERE petrol_pump = %s
-        AND docstatus = 1
-        AND reading_date < %s
-        ORDER BY reading_date DESC, creation DESC
-        LIMIT 1
-    """, (petrol_pump, reading_date_obj), as_dict=True)
+    company = frappe.db.get_value("Petrol Pump", petrol_pump, "company")
+    if not company:
+        return 0
 
-    return flt(result[0].cash_amount) if result else 0
+    # Get the cash account
+    mode_of_payment = frappe.db.get_value("Mode of Payment", {"type": "Cash"}, "name") or "Cash"
+    cash_account = frappe.db.get_value(
+        "Mode of Payment Account",
+        {"parent": mode_of_payment, "company": company},
+        "default_account"
+    )
+    if not cash_account:
+        cash_account = frappe.get_cached_value("Company", company, "default_cash_account")
+
+    if not cash_account:
+        return 0
+
+    # Get the pump's cost center
+    cost_center = frappe.db.get_value("Petrol Pump", petrol_pump, "cost_center")
+
+    # Build GL query — sum of (debit - credit) up to the reading date
+    conditions = "gle.account = %s AND gle.company = %s AND gle.is_cancelled = 0 AND gle.posting_date < %s"
+    params = [cash_account, company, reading_date_obj]
+
+    if cost_center:
+        conditions += " AND gle.cost_center = %s"
+        params.append(cost_center)
+
+    balance = frappe.db.sql("""
+        SELECT COALESCE(SUM(gle.debit - gle.credit), 0) as balance
+        FROM `tabGL Entry` gle
+        WHERE {conditions}
+    """.format(conditions=conditions), params)
+
+    return flt(balance[0][0]) if balance else 0
