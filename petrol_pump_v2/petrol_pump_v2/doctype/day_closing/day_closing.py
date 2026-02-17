@@ -13,6 +13,9 @@ class DayClosing(Document):
         
         # Validate stock availability
         self.validate_stock_availability()
+        
+        # Validate credit sales don't exceed total sales
+        self.validate_credit_sales()
     
     def validate_prices(self):
         """Ensure all nozzle readings have valid prices"""
@@ -62,6 +65,63 @@ class DayClosing(Document):
                 frappe.throw(
                     f"Insufficient stock for Fuel Type {fuel_type}. Available: {total_available}, Issue: {to_issue}. This would leave {remaining} (<= 0)."
                 )
+    def validate_credit_sales(self):
+        """Validate that credit sales per fuel type don't exceed nozzle sales for that fuel type."""
+        # Sum nozzle sales by fuel type
+        nozzle_by_fuel = {}
+        for d in self.nozzle_readings or []:
+            liters = flt(d.current_reading) - flt(d.previous_reading)
+            if liters > 0 and d.fuel_type:
+                if d.fuel_type not in nozzle_by_fuel:
+                    nozzle_by_fuel[d.fuel_type] = {"liters": 0, "amount": 0}
+                rate = flt(d.rate) or self.get_current_rate(d.fuel_type)
+                nozzle_by_fuel[d.fuel_type]["liters"] += liters
+                nozzle_by_fuel[d.fuel_type]["amount"] += liters * rate
+
+        # Sum credit sales by fuel type
+        credit_by_fuel = {}
+        for d in getattr(self, "credit_details", []) or []:
+            ft = getattr(d, "fuel_type", None)
+            if ft and flt(getattr(d, "liters", 0)) > 0:
+                if ft not in credit_by_fuel:
+                    credit_by_fuel[ft] = {"liters": 0, "amount": 0}
+                credit_by_fuel[ft]["liters"] += flt(d.liters)
+                credit_by_fuel[ft]["amount"] += flt(d.amount)
+
+        for fuel_type, credit_data in credit_by_fuel.items():
+            nozzle_data = nozzle_by_fuel.get(fuel_type)
+            if not nozzle_data:
+                frappe.throw(
+                    f"Credit sale has Fuel Type <b>{fuel_type}</b> but no nozzle readings exist for this fuel type. "
+                    "Please check your credit sales entries."
+                )
+            if credit_data["liters"] > nozzle_data["liters"]:
+                frappe.throw(
+                    f"Credit sale liters for <b>{fuel_type}</b> ({credit_data['liters']}) "
+                    f"exceed total nozzle dispensed liters ({nozzle_data['liters']}). "
+                    "Credit sales cannot be more than what was dispensed."
+                )
+
+        # Also validate total outflows don't exceed total sales
+        total_sales = sum(d["amount"] for d in nozzle_by_fuel.values()) if nozzle_by_fuel else 0
+        total_credit = flt(self.credit_amount) or sum(d["amount"] for d in credit_by_fuel.values())
+        total_card = flt(self.card_amount)
+        total_expenses = flt(self.total_expenses)
+        total_supplier = flt(self.total_supplier_payments)
+
+        total_outflows = total_credit + total_card + total_expenses + total_supplier
+        if total_sales > 0 and total_outflows > total_sales:
+            frappe.throw(
+                f"Total outflows ({frappe.format_value(total_outflows, 'Currency')}) exceed "
+                f"Total Sales ({frappe.format_value(total_sales, 'Currency')}).<br><br>"
+                f"<b>Breakdown:</b><br>"
+                f"Credit Sales: {frappe.format_value(total_credit, 'Currency')}<br>"
+                f"Card/POS: {frappe.format_value(total_card, 'Currency')}<br>"
+                f"Expenses: {frappe.format_value(total_expenses, 'Currency')}<br>"
+                f"Supplier Payments: {frappe.format_value(total_supplier, 'Currency')}<br><br>"
+                "Please reduce credit sales, card amounts, expenses, or supplier payments."
+            )
+
     def before_save(self):
         self.calculate_readings()
         self.calculate_credit_totals()
@@ -819,6 +879,13 @@ class DayClosing(Document):
             except Exception as e:
                 errors.append(f"Stock Entry {self.stock_entry_ref}: {str(e)}")
         
+        # Clear all reference fields so amended doc doesn't link to cancelled documents
+        self.db_set('stock_entry_ref', None)
+        self.db_set('sales_invoice_ref', None)
+        self.db_set('payment_entry_ref', None)
+        self.db_set('expense_payment_entries_ref', None)
+        self.db_set('supplier_payment_entries_ref', None)
+
         if errors:
             frappe.msgprint(
                 f"Some transactions could not be cancelled:<br>" + "<br>".join(errors),
