@@ -4,17 +4,15 @@ from frappe.utils import flt, nowdate, now_datetime
 
 class DayClosing(Document):
     def validate(self):
-        """Validate stock availability and price for all nozzle readings"""
+        """Runs on save and submit. Only basic checks here so user can save freely."""
         if not self.petrol_pump:
             return
-        
-        # Validate prices (Blueprint requirement: No submit if price missing/zero)
+
         self.validate_prices()
-        
-        # Validate stock availability
+
+    def before_submit(self):
+        """Heavy validations that should only block submit, not save."""
         self.validate_stock_availability()
-        
-        # Validate credit sales don't exceed total sales
         self.validate_credit_sales()
     
     def validate_prices(self):
