@@ -102,24 +102,18 @@ class DayClosing(Document):
                     "Credit sales cannot be more than what was dispensed."
                 )
 
-        # Also validate total outflows don't exceed total sales
+        # Credit + Card cannot exceed Total Sales (can't collect more than sold)
         total_sales = sum(d["amount"] for d in nozzle_by_fuel.values()) if nozzle_by_fuel else 0
         total_credit = flt(self.credit_amount) or sum(d["amount"] for d in credit_by_fuel.values())
         total_card = flt(self.card_amount)
-        total_expenses = flt(self.total_expenses)
-        total_supplier = flt(self.total_supplier_payments)
 
-        total_outflows = total_credit + total_card + total_expenses + total_supplier
-        if total_sales > 0 and total_outflows > total_sales:
+        if total_sales > 0 and (total_credit + total_card) > total_sales:
             frappe.throw(
-                f"Total outflows ({frappe.format_value(total_outflows, 'Currency')}) exceed "
-                f"Total Sales ({frappe.format_value(total_sales, 'Currency')}).<br><br>"
-                f"<b>Breakdown:</b><br>"
+                f"Credit Sales + Card/POS ({frappe.format_value(total_credit + total_card, 'Currency')}) "
+                f"exceed Total Sales ({frappe.format_value(total_sales, 'Currency')}).<br><br>"
                 f"Credit Sales: {frappe.format_value(total_credit, 'Currency')}<br>"
-                f"Card/POS: {frappe.format_value(total_card, 'Currency')}<br>"
-                f"Expenses: {frappe.format_value(total_expenses, 'Currency')}<br>"
-                f"Supplier Payments: {frappe.format_value(total_supplier, 'Currency')}<br><br>"
-                "Please reduce credit sales, card amounts, expenses, or supplier payments."
+                f"Card/POS: {frappe.format_value(total_card, 'Currency')}<br><br>"
+                "Credit and card collections cannot exceed what was sold from nozzles."
             )
 
     def before_save(self):
