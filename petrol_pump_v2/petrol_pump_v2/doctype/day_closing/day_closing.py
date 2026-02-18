@@ -227,10 +227,10 @@ class DayClosing(Document):
     def calculate_cash_reconciliation(self):
         """Auto-calculate cash and cash-in-hand.
 
-        Cash Amount = Total Sales - Credit - Card - Expenses - Supplier Payments
-        (whatever remains from nozzle sales after everything else is subtracted)
+        Cash Amount = Total Sales - Credit - Card - Expenses - Supplier Payments + Credit Collections
+        (net cash received today from all operations)
 
-        Cash in Hand = Previous Cash Balance (GL) + Cash Amount + Credit Collections
+        Cash in Hand = Previous Cash Balance (GL) + Cash Amount
         (closing cash position at the pump)
         """
         self.cash_amount = (
@@ -239,13 +239,10 @@ class DayClosing(Document):
             - flt(self.card_amount)
             - flt(self.total_expenses)
             - flt(self.total_supplier_payments)
-        )
-
-        self.cash_in_hand = (
-            flt(self.previous_cash)
-            + flt(self.cash_amount)
             + flt(self.total_credit_collections)
         )
+
+        self.cash_in_hand = flt(self.previous_cash) + flt(self.cash_amount)
 
     def calculate_credit_totals(self):
         """Aggregate credit liters and amount from credit_details child table.

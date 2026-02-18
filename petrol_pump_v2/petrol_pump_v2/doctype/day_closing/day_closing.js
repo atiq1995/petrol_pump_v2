@@ -300,8 +300,8 @@ function calculate_cash_reconciliation(frm) {
   const total_supplier_payments = parseFloat(frm.doc.total_supplier_payments || 0);
   const total_credit_collections = parseFloat(frm.doc.total_credit_collections || 0);
 
-  const cash_amount = total_sales - credit_amount - card_amount - total_expenses - total_supplier_payments;
-  const cash_in_hand = previous_cash + cash_amount + total_credit_collections;
+  const cash_amount = total_sales - credit_amount - card_amount - total_expenses - total_supplier_payments + total_credit_collections;
+  const cash_in_hand = previous_cash + cash_amount;
 
   frm.set_value('cash_amount', cash_amount);
   frm.set_value('cash_in_hand', cash_in_hand);

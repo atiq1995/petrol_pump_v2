@@ -189,7 +189,7 @@
    "read_only": 1
   },
   {
-   "description": "Auto-calculated: Total Sales - Credit - Card - Expenses - Supplier Payments",
+   "description": "Auto-calculated: Total Sales - Credit - Card - Expenses - Supplier Payments + Credit Collections",
    "fieldname": "cash_amount",
    "fieldtype": "Currency",
    "label": "Cash Amount",
