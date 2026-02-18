@@ -20,6 +20,9 @@
   "section_break_supplier_payments",
   "supplier_payments",
   "total_supplier_payments",
+  "section_break_credit_collections",
+  "credit_collections",
+  "total_credit_collections",
   "section_break_card_sales",
   "card_sales",
   "section_break_sales",
@@ -39,6 +42,7 @@
   "payment_entry_ref",
   "expense_payment_entries_ref",
   "supplier_payment_entries_ref",
+  "credit_collection_entries_ref",
   "workflow_state",
   "amended_from"
  ],
@@ -124,6 +128,23 @@
    "fieldname": "total_supplier_payments",
    "fieldtype": "Currency",
    "label": "Total Supplier Payments",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_credit_collections",
+   "fieldtype": "Section Break",
+   "label": "Credit Collections (Receivables)"
+  },
+  {
+   "fieldname": "credit_collections",
+   "fieldtype": "Table",
+   "label": "Credit Collections",
+   "options": "Day Closing Credit Collection"
+  },
+  {
+   "fieldname": "total_credit_collections",
+   "fieldtype": "Currency",
+   "label": "Total Credit Collections",
    "read_only": 1
   },
   {
@@ -262,6 +283,13 @@
    "fieldname": "supplier_payment_entries_ref",
    "fieldtype": "Small Text",
    "label": "Supplier Payment Entries",
+   "read_only": 1
+  },
+  {
+   "description": "Auto-created Payment Entries for credit collections (comma-separated)",
+   "fieldname": "credit_collection_entries_ref",
+   "fieldtype": "Small Text",
+   "label": "Credit Collection Entries",
    "read_only": 1
   },
   {

@@ -53,6 +53,7 @@ frappe.ui.form.on('Day Closing', {
     // Recalculate totals on refresh
     calculate_total_expenses(frm);
     calculate_total_supplier_payments(frm);
+    calculate_total_credit_collections(frm);
   },
   petrol_pump(frm) {
     if (!frm.doc.petrol_pump) return;
@@ -152,6 +153,22 @@ frappe.ui.form.on('Day Closing Card Detail', {
   },
   day_closing_card_detail_remove(frm) {
     calculate_total_card_amount(frm);
+    calculate_cash_reconciliation(frm);
+  }
+});
+
+// Handle credit collections child table
+frappe.ui.form.on('Day Closing Credit Collection', {
+  amount(frm, cdt, cdn) {
+    calculate_total_credit_collections(frm);
+    calculate_cash_reconciliation(frm);
+  },
+  credit_collections_add(frm) {
+    calculate_total_credit_collections(frm);
+    calculate_cash_reconciliation(frm);
+  },
+  credit_collections_remove(frm) {
+    calculate_total_credit_collections(frm);
     calculate_cash_reconciliation(frm);
   }
 });
@@ -263,6 +280,17 @@ function calculate_total_supplier_payments(frm) {
   frm.refresh_field('total_supplier_payments');
 }
 
+function calculate_total_credit_collections(frm) {
+  let total = 0;
+  if (frm.doc.credit_collections && frm.doc.credit_collections.length > 0) {
+    frm.doc.credit_collections.forEach((row) => {
+      total += parseFloat(row.amount || 0);
+    });
+  }
+  frm.set_value('total_credit_collections', total);
+  frm.refresh_field('total_credit_collections');
+}
+
 function calculate_cash_reconciliation(frm) {
   const previous_cash = parseFloat(frm.doc.previous_cash || 0);
   const total_sales = parseFloat(frm.doc.total_sales || 0);
@@ -270,11 +298,10 @@ function calculate_cash_reconciliation(frm) {
   const card_amount = parseFloat(frm.doc.card_amount || 0);
   const total_expenses = parseFloat(frm.doc.total_expenses || 0);
   const total_supplier_payments = parseFloat(frm.doc.total_supplier_payments || 0);
+  const total_credit_collections = parseFloat(frm.doc.total_credit_collections || 0);
 
-  // Cash Amount = Total Sales - Credit - Card - Expenses - Supplier Payments
   const cash_amount = total_sales - credit_amount - card_amount - total_expenses - total_supplier_payments;
-  // Cash in Hand = Previous Cash + Cash Amount
-  const cash_in_hand = previous_cash + cash_amount;
+  const cash_in_hand = previous_cash + cash_amount + total_credit_collections;
 
   frm.set_value('cash_amount', cash_amount);
   frm.set_value('cash_in_hand', cash_in_hand);

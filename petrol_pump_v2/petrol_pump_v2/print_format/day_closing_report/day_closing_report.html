@@ -444,6 +444,39 @@
     </table>
     {% endif %}
 
+    <!-- CREDIT COLLECTIONS (RECEIVABLES) -->
+    {% if doc.credit_collections and doc.credit_collections|length > 0 %}
+    <div class="dc-section-title">Credit Collections (Receivables)</div>
+    <table class="dc-table">
+        <thead>
+            <tr>
+                <th style="width:5%">#</th>
+                <th style="width:35%">Customer</th>
+                <th style="width:35%">Description</th>
+                <th class="text-right" style="width:25%">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set cc_total = {"amount": 0} %}
+            {% for row in doc.credit_collections %}
+            {% if cc_total.update({"amount": cc_total.amount + (row.amount or 0)}) %}{% endif %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td>{{ row.customer }}</td>
+                <td>{{ row.description or "—" }}</td>
+                <td class="text-right">{{ frappe.format_value(row.amount, {"fieldtype": "Currency"}) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="3" class="text-right"><strong>Total Credit Collections</strong></td>
+                <td class="text-right"><strong>{{ frappe.format_value(cc_total.amount, {"fieldtype": "Currency"}) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
     <!-- CARD / POS COLLECTIONS -->
     {% if doc.card_sales and doc.card_sales|length > 0 %}
     <div class="dc-section-title">Card / POS Collections</div>
@@ -539,6 +572,12 @@
                     <span class="dc-summary-row-value" style="color:#e74c3c;">({{ frappe.format_value(doc.total_supplier_payments, {"fieldtype": "Currency"}) }})</span>
                 </div>
                 {% endif %}
+                {% if doc.total_credit_collections %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Credit Collections (Receivables)</span>
+                    <span class="dc-summary-row-value" style="color:#27ae60;">+{{ frappe.format_value(doc.total_credit_collections, {"fieldtype": "Currency"}) }}</span>
+                </div>
+                {% endif %}
                 <div class="dc-summary-row highlight" style="margin-top:5px;">
                     <span class="dc-summary-row-label" style="font-weight:700; font-size:10pt;">Cash in Hand</span>
                     <span class="dc-summary-row-value" style="color:#2980b9; font-size:11pt;">{{ frappe.format_value(doc.cash_in_hand, {"fieldtype": "Currency"}) }}</span>
@@ -587,6 +626,12 @@
                 <div class="dc-summary-row">
                     <span class="dc-summary-row-label">Supplier Payment(s)</span>
                     <span class="dc-summary-row-value" style="font-size: 8pt;">{{ doc.supplier_payment_entries_ref }}</span>
+                </div>
+                {% endif %}
+                {% if doc.credit_collection_entries_ref %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Credit Collection(s)</span>
+                    <span class="dc-summary-row-value" style="font-size: 8pt;">{{ doc.credit_collection_entries_ref }}</span>
                 </div>
                 {% endif %}
             </div>
