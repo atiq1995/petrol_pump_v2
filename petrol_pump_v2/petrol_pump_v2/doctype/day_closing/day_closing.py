@@ -100,18 +100,22 @@ class DayClosing(Document):
                     "Credit sales cannot be more than what was dispensed."
                 )
 
-        # Credit + Card cannot exceed Total Sales (can't collect more than sold)
+        # Credit + Card cannot exceed Total Sales + Credit Collections
         total_sales = sum(d["amount"] for d in nozzle_by_fuel.values()) if nozzle_by_fuel else 0
         total_credit = flt(self.credit_amount) or sum(d["amount"] for d in credit_by_fuel.values())
         total_card = flt(self.card_amount)
+        total_collections = flt(self.total_credit_collections)
+        available = total_sales + total_collections
 
-        if total_sales > 0 and (total_credit + total_card) > total_sales:
+        if available > 0 and (total_credit + total_card) > available:
             frappe.throw(
                 f"Credit Sales + Card/POS ({frappe.format_value(total_credit + total_card, 'Currency')}) "
-                f"exceed Total Sales ({frappe.format_value(total_sales, 'Currency')}).<br><br>"
+                f"exceed Total Sales + Credit Collections ({frappe.format_value(available, 'Currency')}).<br><br>"
                 f"Credit Sales: {frappe.format_value(total_credit, 'Currency')}<br>"
-                f"Card/POS: {frappe.format_value(total_card, 'Currency')}<br><br>"
-                "Credit and card collections cannot exceed what was sold from nozzles."
+                f"Card/POS: {frappe.format_value(total_card, 'Currency')}<br>"
+                f"Total Sales: {frappe.format_value(total_sales, 'Currency')}<br>"
+                f"Credit Collections: {frappe.format_value(total_collections, 'Currency')}<br><br>"
+                "Credit and card amounts cannot exceed total sales plus credit collections."
             )
 
     def before_save(self):
