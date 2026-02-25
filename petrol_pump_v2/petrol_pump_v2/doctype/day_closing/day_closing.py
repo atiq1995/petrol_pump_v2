@@ -122,6 +122,7 @@ class DayClosing(Document):
         self.calculate_readings()
         self.calculate_credit_totals()
         self.calculate_expense_totals()
+        self.calculate_fund_transfer_totals()
         self.calculate_supplier_payment_totals()
         self.calculate_credit_collection_totals()
         self.calculate_card_totals()
@@ -132,6 +133,7 @@ class DayClosing(Document):
             self.create_stock_entry()
             self.create_sales_invoices()
             self.create_expense_payment_entries()
+            self.create_fund_transfer_entries()
             self.create_supplier_payment_entries()
             self.create_credit_collection_payment_entries()
             self.update_nozzle_last_readings()
@@ -145,6 +147,7 @@ class DayClosing(Document):
                 f"Credit Sales: {frappe.format_value(self.credit_amount, 'Currency')}<br>"
                 f"Card/POS: {frappe.format_value(self.card_amount, 'Currency')}<br>"
                 f"Expenses: {frappe.format_value(self.total_expenses, 'Currency')}<br>"
+                f"Net Fund Transfer Effect: {frappe.format_value(self.total_fund_transfer_effect, 'Currency')}<br>"
                 f"Supplier Payments: {frappe.format_value(self.total_supplier_payments, 'Currency')}<br>"
                 f"Credit Collections: {frappe.format_value(self.total_credit_collections, 'Currency')}<br>"
                 f"Cash Amount: {frappe.format_value(self.cash_amount, 'Currency')}<br>"
@@ -221,6 +224,18 @@ class DayClosing(Document):
             total += flt(getattr(row, "amount", 0))
         self.total_supplier_payments = total
 
+    def calculate_fund_transfer_totals(self):
+        """Calculate net effect on cash from fund transfer table."""
+        effect = 0.0
+        for row in getattr(self, "fund_transfers", []) or []:
+            amount = flt(getattr(row, "amount", 0))
+            transfer_type = getattr(row, "transfer_type", None)
+            if transfer_type == "Bank to Cash":
+                effect += amount
+            elif transfer_type == "Cash to Bank":
+                effect -= amount
+        self.total_fund_transfer_effect = effect
+
     def calculate_credit_collection_totals(self):
         """Calculate total credit collections from credit_collections child table"""
         total = 0.0
@@ -231,7 +246,7 @@ class DayClosing(Document):
     def calculate_cash_reconciliation(self):
         """Auto-calculate cash and cash-in-hand.
 
-        Cash Amount = Total Sales - Credit - Card - Expenses - Supplier Payments + Credit Collections
+        Cash Amount = Total Sales - Credit - Card - Expenses - Supplier Payments + Credit Collections + Net Fund Transfer Effect
         (net cash received today from all operations)
 
         Cash in Hand = Previous Cash Balance (GL) + Cash Amount
@@ -244,6 +259,7 @@ class DayClosing(Document):
             - flt(self.total_expenses)
             - flt(self.total_supplier_payments)
             + flt(self.total_credit_collections)
+            + flt(self.total_fund_transfer_effect)
         )
 
         self.cash_in_hand = flt(self.previous_cash) + flt(self.cash_amount)
@@ -718,6 +734,107 @@ class DayClosing(Document):
         if created_journal_entries:
             self.db_set('expense_payment_entries_ref', ', '.join(created_journal_entries))
 
+    def create_fund_transfer_entries(self):
+        """Create Journal Entries for bank<->cash fund transfers using pump cost center."""
+        if not getattr(self, "fund_transfers", None) or not self.fund_transfers:
+            return
+
+        company = frappe.db.get_value("Petrol Pump", self.petrol_pump, "company")
+        if not company:
+            return
+
+        company_currency = frappe.db.get_value("Company", company, "default_currency")
+        mode_of_payment = frappe.db.get_value("Mode of Payment", {"type": "Cash"}, "name") or "Cash"
+        cash_account = frappe.db.get_value(
+            "Mode of Payment Account",
+            {"parent": mode_of_payment, "company": company},
+            "default_account"
+        )
+        if not cash_account:
+            cash_account = frappe.get_cached_value("Company", company, "default_cash_account")
+
+        if not cash_account:
+            frappe.throw("Cash account not found. Please configure Mode of Payment or Company default cash account.")
+
+        cost_center = self.get_pump_cost_center()
+        created_journal_entries = []
+
+        for row in self.fund_transfers:
+            transfer_type = getattr(row, "transfer_type", None)
+            bank_account_name = getattr(row, "bank_account", None)
+            amount = flt(getattr(row, "amount", 0))
+            bank_name = getattr(row, "bank", None)
+
+            if transfer_type not in ("Cash to Bank", "Bank to Cash") or not bank_account_name or amount <= 0:
+                continue
+
+            bank_doc = frappe.get_doc("Bank Account", bank_account_name)
+            bank_gl_account = bank_doc.account
+            if not bank_gl_account:
+                frappe.throw(
+                    f"Bank Account <b>{bank_account_name}</b> has no linked GL Account. "
+                    "Please set Account on Bank Account first."
+                )
+            if bank_name and bank_doc.bank and bank_name != bank_doc.bank:
+                frappe.throw(
+                    f"Selected bank <b>{bank_name}</b> does not match Bank Account <b>{bank_account_name}</b> "
+                    f"(bank: <b>{bank_doc.bank}</b>)."
+                )
+
+            je = frappe.new_doc("Journal Entry")
+            je.voucher_type = "Bank Entry"
+            je.company = company
+            je.posting_date = self.reading_date or nowdate()
+            je.set_posting_time = 1
+            je.user_remark = f"Fund Transfer ({transfer_type}) from Day Closing {self.name}"
+
+            if transfer_type == "Cash to Bank":
+                # Dr Bank, Cr Cash
+                je.append("accounts", {
+                    "account": bank_gl_account,
+                    "debit_in_account_currency": amount,
+                    "cost_center": cost_center,
+                    "account_currency": company_currency,
+                    "exchange_rate": 1.0
+                })
+                je.append("accounts", {
+                    "account": cash_account,
+                    "credit_in_account_currency": amount,
+                    "cost_center": cost_center,
+                    "account_currency": company_currency,
+                    "exchange_rate": 1.0
+                })
+            else:
+                # Bank to Cash: Dr Cash, Cr Bank
+                je.append("accounts", {
+                    "account": cash_account,
+                    "debit_in_account_currency": amount,
+                    "cost_center": cost_center,
+                    "account_currency": company_currency,
+                    "exchange_rate": 1.0
+                })
+                je.append("accounts", {
+                    "account": bank_gl_account,
+                    "credit_in_account_currency": amount,
+                    "cost_center": cost_center,
+                    "account_currency": company_currency,
+                    "exchange_rate": 1.0
+                })
+
+            je.cheque_no = getattr(row, "reference_no", None) or self.name
+            je.cheque_date = self.reading_date or nowdate()
+            je.insert(ignore_permissions=True)
+            je.submit()
+            created_journal_entries.append(je.name)
+
+            remarks = f" ({row.remarks})" if getattr(row, "remarks", None) else ""
+            frappe.msgprint(
+                f"Journal Entry {je.name} created for fund transfer {transfer_type}: {amount}{remarks}"
+            )
+
+        if created_journal_entries:
+            self.db_set('fund_transfer_entries_ref', ', '.join(created_journal_entries))
+
     def create_supplier_payment_entries(self):
         """Create Payment Entries (Pay type) for each supplier payment row.
 
@@ -939,6 +1056,18 @@ class DayClosing(Document):
                         frappe.msgprint(f"Expense Journal Entry {expense_ref} cancelled")
                 except Exception as e:
                     errors.append(f"Expense Journal Entry {expense_ref}: {str(e)}")
+
+        # Cancel Fund Transfer Journal Entries
+        if getattr(self, "fund_transfer_entries_ref", None):
+            transfer_refs = [ref.strip() for ref in str(self.fund_transfer_entries_ref).split(',')]
+            for transfer_ref in transfer_refs:
+                try:
+                    je = frappe.get_doc("Journal Entry", transfer_ref)
+                    if je.docstatus == 1:
+                        je.cancel()
+                        frappe.msgprint(f"Fund Transfer Journal Entry {transfer_ref} cancelled")
+                except Exception as e:
+                    errors.append(f"Fund Transfer Journal Entry {transfer_ref}: {str(e)}")
         
         # Cancel Payment Entries (cash + card collections) - must be done before Sales Invoice
         if self.payment_entry_ref:
@@ -979,6 +1108,7 @@ class DayClosing(Document):
         self.db_set('sales_invoice_ref', None)
         self.db_set('payment_entry_ref', None)
         self.db_set('expense_payment_entries_ref', None)
+        self.db_set('fund_transfer_entries_ref', None)
         self.db_set('supplier_payment_entries_ref', None)
         self.db_set('credit_collection_entries_ref', None)
 

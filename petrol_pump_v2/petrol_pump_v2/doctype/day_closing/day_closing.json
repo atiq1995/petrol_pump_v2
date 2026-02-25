@@ -17,6 +17,9 @@
   "section_break_expenses",
   "expenses",
   "total_expenses",
+  "section_break_fund_transfer",
+  "fund_transfers",
+  "total_fund_transfer_effect",
   "section_break_supplier_payments",
   "supplier_payments",
   "total_supplier_payments",
@@ -41,6 +44,7 @@
   "column_break_ref",
   "payment_entry_ref",
   "expense_payment_entries_ref",
+  "fund_transfer_entries_ref",
   "supplier_payment_entries_ref",
   "credit_collection_entries_ref",
   "workflow_state",
@@ -189,7 +193,7 @@
    "read_only": 1
   },
   {
-   "description": "Auto-calculated: Total Sales - Credit - Card - Expenses - Supplier Payments + Credit Collections",
+   "description": "Auto-calculated: Total Sales - Credit - Card - Cash Out - Supplier Payments + Credit Collections + Net Fund Transfer Effect",
    "fieldname": "cash_amount",
    "fieldtype": "Currency",
    "label": "Cash Amount",
@@ -223,13 +227,13 @@
   {
    "fieldname": "section_break_expenses",
    "fieldtype": "Section Break",
-   "label": "Expenses"
+   "label": "Cash Out"
   },
   {
-   "description": "Expenses to be deducted from cash and posted to expense accounts",
+   "description": "Cash out entries to be deducted from cash and posted to selected accounts",
    "fieldname": "expenses",
    "fieldtype": "Table",
-   "label": "Expenses",
+   "label": "Cash Out",
    "options": "Day Closing Expense Detail"
   },
   {
@@ -237,6 +241,25 @@
    "fieldname": "total_expenses",
    "fieldtype": "Currency",
    "label": "Total Expenses",
+   "read_only": 1
+  },
+  {
+   "fieldname": "section_break_fund_transfer",
+   "fieldtype": "Section Break",
+   "label": "Fund Transfer"
+  },
+  {
+   "description": "Cash and bank internal transfers",
+   "fieldname": "fund_transfers",
+   "fieldtype": "Table",
+   "label": "Fund Transfer",
+   "options": "Day Closing Fund Transfer"
+  },
+  {
+   "description": "Net effect on cash (+ for Bank to Cash, - for Cash to Bank)",
+   "fieldname": "total_fund_transfer_effect",
+   "fieldtype": "Currency",
+   "label": "Net Fund Transfer Effect",
    "read_only": 1
   },
   {
@@ -276,6 +299,13 @@
    "fieldname": "expense_payment_entries_ref",
    "fieldtype": "Small Text",
    "label": "Expense Journal Entries",
+   "read_only": 1
+  },
+  {
+   "description": "Auto-created Journal Entries for fund transfers (comma-separated)",
+   "fieldname": "fund_transfer_entries_ref",
+   "fieldtype": "Small Text",
+   "label": "Fund Transfer Journal Entries",
    "read_only": 1
   },
   {

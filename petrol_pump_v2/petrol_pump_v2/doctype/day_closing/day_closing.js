@@ -1,14 +1,17 @@
 frappe.ui.form.on('Day Closing', {
   setup(frm) {
-    // Filter expense_account to show only Indirect Expenses accounts
-    frm.set_query('expense_account', 'expenses', function() {
-      return {
-        query: 'petrol_pump_v2.petrol_pump_v2.doctype.day_closing.day_closing.get_indirect_expense_accounts'
-      };
-    });
-
     // Filter bank_account in card_sales to match selected bank
     frm.set_query('bank_account', 'card_sales', function(doc, cdt, cdn) {
+      const row = frappe.get_doc(cdt, cdn);
+      const filters = {};
+      if (row.bank) {
+        filters.bank = row.bank;
+      }
+      return { filters: filters };
+    });
+
+    // Filter bank_account in fund_transfers to match selected bank
+    frm.set_query('bank_account', 'fund_transfers', function(doc, cdt, cdn) {
       const row = frappe.get_doc(cdt, cdn);
       const filters = {};
       if (row.bank) {
@@ -52,6 +55,7 @@ frappe.ui.form.on('Day Closing', {
     
     // Recalculate totals on refresh
     calculate_total_expenses(frm);
+    calculate_total_fund_transfer_effect(frm);
     calculate_total_supplier_payments(frm);
     calculate_total_credit_collections(frm);
   },
@@ -189,6 +193,29 @@ frappe.ui.form.on('Day Closing Supplier Payment', {
   }
 });
 
+// Handle fund transfer child table
+frappe.ui.form.on('Day Closing Fund Transfer', {
+  transfer_type(frm, cdt, cdn) {
+    calculate_total_fund_transfer_effect(frm);
+    calculate_cash_reconciliation(frm);
+  },
+  bank(frm, cdt, cdn) {
+    frappe.model.set_value(cdt, cdn, 'bank_account', '');
+  },
+  amount(frm, cdt, cdn) {
+    calculate_total_fund_transfer_effect(frm);
+    calculate_cash_reconciliation(frm);
+  },
+  fund_transfers_add(frm) {
+    calculate_total_fund_transfer_effect(frm);
+    calculate_cash_reconciliation(frm);
+  },
+  fund_transfers_remove(frm) {
+    calculate_total_fund_transfer_effect(frm);
+    calculate_cash_reconciliation(frm);
+  }
+});
+
 // Helper function to calculate amount
 function calculate_amount(frm, cdt, cdn) {
   const row = frappe.get_doc(cdt, cdn);
@@ -280,6 +307,22 @@ function calculate_total_supplier_payments(frm) {
   frm.refresh_field('total_supplier_payments');
 }
 
+function calculate_total_fund_transfer_effect(frm) {
+  let effect = 0;
+  if (frm.doc.fund_transfers && frm.doc.fund_transfers.length > 0) {
+    frm.doc.fund_transfers.forEach((row) => {
+      const amount = parseFloat(row.amount || 0);
+      if (row.transfer_type === 'Bank to Cash') {
+        effect += amount;
+      } else if (row.transfer_type === 'Cash to Bank') {
+        effect -= amount;
+      }
+    });
+  }
+  frm.set_value('total_fund_transfer_effect', effect);
+  frm.refresh_field('total_fund_transfer_effect');
+}
+
 function calculate_total_credit_collections(frm) {
   let total = 0;
   if (frm.doc.credit_collections && frm.doc.credit_collections.length > 0) {
@@ -297,10 +340,11 @@ function calculate_cash_reconciliation(frm) {
   const credit_amount = parseFloat(frm.doc.credit_amount || 0);
   const card_amount = parseFloat(frm.doc.card_amount || 0);
   const total_expenses = parseFloat(frm.doc.total_expenses || 0);
+  const total_fund_transfer_effect = parseFloat(frm.doc.total_fund_transfer_effect || 0);
   const total_supplier_payments = parseFloat(frm.doc.total_supplier_payments || 0);
   const total_credit_collections = parseFloat(frm.doc.total_credit_collections || 0);
 
-  const cash_amount = total_sales - credit_amount - card_amount - total_expenses - total_supplier_payments + total_credit_collections;
+  const cash_amount = total_sales - credit_amount - card_amount - total_expenses - total_supplier_payments + total_credit_collections + total_fund_transfer_effect;
   const cash_in_hand = previous_cash + cash_amount;
 
   frm.set_value('cash_amount', cash_amount);
