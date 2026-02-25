@@ -230,9 +230,9 @@ class DayClosing(Document):
         for row in getattr(self, "fund_transfers", []) or []:
             amount = flt(getattr(row, "amount", 0))
             transfer_type = getattr(row, "transfer_type", None)
-            if transfer_type == "Bank to Cash":
+            if transfer_type == "Withdraw":
                 effect += amount
-            elif transfer_type == "Cash to Bank":
+            elif transfer_type == "Deposit":
                 effect -= amount
         self.total_fund_transfer_effect = effect
 
@@ -765,7 +765,7 @@ class DayClosing(Document):
             amount = flt(getattr(row, "amount", 0))
             bank_name = getattr(row, "bank", None)
 
-            if transfer_type not in ("Cash to Bank", "Bank to Cash") or not bank_account_name or amount <= 0:
+            if transfer_type not in ("Deposit", "Withdraw") or not bank_account_name or amount <= 0:
                 continue
 
             bank_doc = frappe.get_doc("Bank Account", bank_account_name)
@@ -788,8 +788,8 @@ class DayClosing(Document):
             je.set_posting_time = 1
             je.user_remark = f"Fund Transfer ({transfer_type}) from Day Closing {self.name}"
 
-            if transfer_type == "Cash to Bank":
-                # Dr Bank, Cr Cash
+            if transfer_type == "Deposit":
+                # Deposit means cash goes to bank: Dr Bank, Cr Cash
                 je.append("accounts", {
                     "account": bank_gl_account,
                     "debit_in_account_currency": amount,
@@ -805,7 +805,7 @@ class DayClosing(Document):
                     "exchange_rate": 1.0
                 })
             else:
-                # Bank to Cash: Dr Cash, Cr Bank
+                # Withdraw means cash comes from bank: Dr Cash, Cr Bank
                 je.append("accounts", {
                     "account": cash_account,
                     "debit_in_account_currency": amount,

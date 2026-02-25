@@ -18,7 +18,7 @@
    "fieldtype": "Select",
    "in_list_view": 1,
    "label": "Transfer Type",
-   "options": "Cash to Bank\nBank to Cash",
+   "options": "Withdraw\nDeposit",
    "reqd": 1
   },
   {

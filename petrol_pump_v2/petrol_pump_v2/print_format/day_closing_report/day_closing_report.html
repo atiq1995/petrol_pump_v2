@@ -411,6 +411,55 @@
     </table>
     {% endif %}
 
+    <!-- FUND TRANSFER -->
+    {% if doc.fund_transfers and doc.fund_transfers|length > 0 %}
+    <div class="dc-section-title">Fund Transfer</div>
+    <table class="dc-table">
+        <thead>
+            <tr>
+                <th style="width:5%">#</th>
+                <th style="width:15%">Type</th>
+                <th style="width:20%">Bank</th>
+                <th style="width:20%">Bank Account</th>
+                <th style="width:20%">Remarks</th>
+                <th class="text-right" style="width:20%">Amount</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% set ft_totals = {"deposit": 0, "withdraw": 0} %}
+            {% for row in doc.fund_transfers %}
+            {% if row.transfer_type == "Deposit" %}
+            {% if ft_totals.update({"deposit": ft_totals.deposit + (row.amount or 0)}) %}{% endif %}
+            {% elif row.transfer_type == "Withdraw" %}
+            {% if ft_totals.update({"withdraw": ft_totals.withdraw + (row.amount or 0)}) %}{% endif %}
+            {% endif %}
+            <tr>
+                <td class="text-center">{{ loop.index }}</td>
+                <td>{{ row.transfer_type or "—" }}</td>
+                <td>{{ row.bank or "—" }}</td>
+                <td>{{ row.bank_account or "—" }}</td>
+                <td>{{ row.remarks or "—" }}</td>
+                <td class="text-right">{{ frappe.format_value(row.amount, {"fieldtype": "Currency"}) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr>
+                <td colspan="5" class="text-right"><strong>Total Deposit</strong></td>
+                <td class="text-right"><strong>{{ frappe.format_value(ft_totals.deposit, {"fieldtype": "Currency"}) }}</strong></td>
+            </tr>
+            <tr>
+                <td colspan="5" class="text-right"><strong>Total Withdraw</strong></td>
+                <td class="text-right"><strong>{{ frappe.format_value(ft_totals.withdraw, {"fieldtype": "Currency"}) }}</strong></td>
+            </tr>
+            <tr>
+                <td colspan="5" class="text-right"><strong>Net Effect on Cash</strong></td>
+                <td class="text-right"><strong>{{ frappe.format_value((ft_totals.withdraw or 0) - (ft_totals.deposit or 0), {"fieldtype": "Currency"}) }}</strong></td>
+            </tr>
+        </tfoot>
+    </table>
+    {% endif %}
+
     <!-- SUPPLIER PAYMENTS -->
     {% if doc.supplier_payments and doc.supplier_payments|length > 0 %}
     <div class="dc-section-title">Supplier Payments</div>
@@ -566,6 +615,14 @@
                     <span class="dc-summary-row-value" style="color:#e74c3c;">({{ frappe.format_value(doc.total_expenses, {"fieldtype": "Currency"}) }})</span>
                 </div>
                 {% endif %}
+                {% if doc.total_fund_transfer_effect %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Net Fund Transfer Effect</span>
+                    <span class="dc-summary-row-value" style="{% if doc.total_fund_transfer_effect > 0 %}color:#27ae60;{% elif doc.total_fund_transfer_effect < 0 %}color:#e74c3c;{% endif %}">
+                        {{ frappe.format_value(doc.total_fund_transfer_effect, {"fieldtype": "Currency"}) }}
+                    </span>
+                </div>
+                {% endif %}
                 {% if doc.total_supplier_payments %}
                 <div class="dc-summary-row">
                     <span class="dc-summary-row-label">Total Supplier Payments</span>
@@ -620,6 +677,12 @@
                 <div class="dc-summary-row">
                     <span class="dc-summary-row-label">Expense Journal(s)</span>
                     <span class="dc-summary-row-value" style="font-size: 8pt;">{{ doc.expense_payment_entries_ref }}</span>
+                </div>
+                {% endif %}
+                {% if doc.fund_transfer_entries_ref %}
+                <div class="dc-summary-row">
+                    <span class="dc-summary-row-label">Fund Transfer Journal(s)</span>
+                    <span class="dc-summary-row-value" style="font-size: 8pt;">{{ doc.fund_transfer_entries_ref }}</span>
                 </div>
                 {% endif %}
                 {% if doc.supplier_payment_entries_ref %}

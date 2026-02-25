@@ -193,7 +193,7 @@
    "read_only": 1
   },
   {
-   "description": "Auto-calculated: Total Sales - Credit - Card - Cash Out - Supplier Payments + Credit Collections + Net Fund Transfer Effect",
+   "description": "Auto-calculated: Total Sales - Credit - Card - Expenses - Supplier Payments + Credit Collections + Net Fund Transfer Effect",
    "fieldname": "cash_amount",
    "fieldtype": "Currency",
    "label": "Cash Amount",
@@ -227,13 +227,13 @@
   {
    "fieldname": "section_break_expenses",
    "fieldtype": "Section Break",
-   "label": "Cash Out"
+   "label": "Expenses"
   },
   {
-   "description": "Cash out entries to be deducted from cash and posted to selected accounts",
+   "description": "Expenses to be deducted from cash and posted to expense accounts",
    "fieldname": "expenses",
    "fieldtype": "Table",
-   "label": "Cash Out",
+   "label": "Expenses",
    "options": "Day Closing Expense Detail"
   },
   {
@@ -256,7 +256,7 @@
    "options": "Day Closing Fund Transfer"
   },
   {
-   "description": "Net effect on cash (+ for Bank to Cash, - for Cash to Bank)",
+   "description": "Net effect on cash (+ for Withdraw, - for Deposit)",
    "fieldname": "total_fund_transfer_effect",
    "fieldtype": "Currency",
    "label": "Net Fund Transfer Effect",

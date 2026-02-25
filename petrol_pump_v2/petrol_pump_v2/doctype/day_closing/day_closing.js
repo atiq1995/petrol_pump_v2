@@ -1,5 +1,12 @@
 frappe.ui.form.on('Day Closing', {
   setup(frm) {
+    // Filter expense_account to show only Indirect Expenses accounts
+    frm.set_query('expense_account', 'expenses', function() {
+      return {
+        query: 'petrol_pump_v2.petrol_pump_v2.doctype.day_closing.day_closing.get_indirect_expense_accounts'
+      };
+    });
+
     // Filter bank_account in card_sales to match selected bank
     frm.set_query('bank_account', 'card_sales', function(doc, cdt, cdn) {
       const row = frappe.get_doc(cdt, cdn);
@@ -195,14 +202,14 @@ frappe.ui.form.on('Day Closing Supplier Payment', {
 
 // Handle fund transfer child table
 frappe.ui.form.on('Day Closing Fund Transfer', {
-  transfer_type(frm, cdt, cdn) {
+  transfer_type(frm) {
     calculate_total_fund_transfer_effect(frm);
     calculate_cash_reconciliation(frm);
   },
   bank(frm, cdt, cdn) {
     frappe.model.set_value(cdt, cdn, 'bank_account', '');
   },
-  amount(frm, cdt, cdn) {
+  amount(frm) {
     calculate_total_fund_transfer_effect(frm);
     calculate_cash_reconciliation(frm);
   },
@@ -312,9 +319,9 @@ function calculate_total_fund_transfer_effect(frm) {
   if (frm.doc.fund_transfers && frm.doc.fund_transfers.length > 0) {
     frm.doc.fund_transfers.forEach((row) => {
       const amount = parseFloat(row.amount || 0);
-      if (row.transfer_type === 'Bank to Cash') {
+      if (row.transfer_type === 'Withdraw') {
         effect += amount;
-      } else if (row.transfer_type === 'Cash to Bank') {
+      } else if (row.transfer_type === 'Deposit') {
         effect -= amount;
       }
     });
