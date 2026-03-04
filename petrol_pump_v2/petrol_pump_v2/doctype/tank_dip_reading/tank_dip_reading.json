@@ -1,0 +1,85 @@
+{
+ "actions": [],
+ "autoname": "naming_series:",
+ "creation": "2026-02-25 17:00:00.000000",
+ "doctype": "DocType",
+ "engine": "InnoDB",
+ "field_order": [
+  "naming_series",
+  "reading_date",
+  "petrol_pump",
+  "tank_readings",
+  "total_variance",
+  "remarks"
+ ],
+ "fields": [
+  {
+   "default": "TDR-",
+   "fieldname": "naming_series",
+   "fieldtype": "Select",
+   "in_list_view": 1,
+   "label": "Naming Series",
+   "options": "TDR-",
+   "reqd": 1
+  },
+  {
+   "default": "Today",
+   "fieldname": "reading_date",
+   "fieldtype": "Date",
+   "in_list_view": 1,
+   "label": "Reading Date",
+   "reqd": 1
+  },
+  {
+   "fieldname": "petrol_pump",
+   "fieldtype": "Link",
+   "in_list_view": 1,
+   "label": "Petrol Pump",
+   "options": "Petrol Pump",
+   "reqd": 1
+  },
+  {
+   "description": "Fuel tanks for selected petrol pump are auto-populated",
+   "fieldname": "tank_readings",
+   "fieldtype": "Table",
+   "label": "Tank Readings",
+   "options": "Tank Dip Reading Detail",
+   "reqd": 1
+  },
+  {
+   "fieldname": "total_variance",
+   "fieldtype": "Float",
+   "label": "Total Variance",
+   "read_only": 1
+  },
+  {
+   "fieldname": "remarks",
+   "fieldtype": "Small Text",
+   "label": "Remarks"
+  }
+ ],
+ "is_submittable": 1,
+ "links": [],
+ "modified": "2026-02-25 17:00:00.000000",
+ "modified_by": "Administrator",
+ "module": "Petrol Pump V2",
+ "name": "Tank Dip Reading",
+ "naming_rule": "By \"Naming Series\" field",
+ "owner": "Administrator",
+ "permissions": [
+  {
+   "amend": 1,
+   "cancel": 1,
+   "create": 1,
+   "read": 1,
+   "role": "System Manager",
+   "submit": 1,
+   "write": 1
+  }
+ ],
+ "sort_field": "modified",
+ "sort_order": "DESC",
+ "states": [],
+ "title_field": "reading_date",
+ "track_changes": 1
+}

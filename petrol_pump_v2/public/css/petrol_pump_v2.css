@@ -1,0 +1,54 @@
+/*
+ * Desk navbar theme overrides for Petrol Pump V2.
+ * Update these variables to quickly change navbar look-and-feel.
+ */
+:root {
+	--pp-navbar-text-color: #f8f9fa;
+	--pp-navbar-icon-color: #f8f9fa;
+	--pp-navbar-hover-text-color: #ffffff;
+	--pp-navbar-hover-bg-color: rgba(255, 255, 255, 0.12);
+	--pp-navbar-dropdown-text-color: #1f2937;
+	--pp-navbar-dropdown-bg-color: #ffffff;
+}
+
+/* Top navbar links/brand text */
+.navbar .navbar-brand,
+.navbar .navbar-nav .nav-link,
+.navbar .search-bar .awesomplete input {
+	color: var(--pp-navbar-text-color) !important;
+}
+
+/* Navbar icons and icon buttons */
+.navbar .octicon,
+.navbar .es-icon,
+.navbar .icon,
+.navbar .btn-reset svg,
+.navbar .dropdown-toggle svg {
+	color: var(--pp-navbar-icon-color) !important;
+	fill: currentColor !important;
+}
+
+/* Hover/active state in top navbar */
+.navbar .navbar-nav .nav-link:hover,
+.navbar .navbar-nav .nav-link:focus,
+.navbar .navbar-nav .show > .nav-link,
+.navbar .dropdown-toggle:hover,
+.navbar .dropdown-toggle:focus {
+	color: var(--pp-navbar-hover-text-color) !important;
+	background: var(--pp-navbar-hover-bg-color) !important;
+}
+
+/* Search placeholder in dark/custom navbar backgrounds */
+.navbar .search-bar .awesomplete input::placeholder {
+	color: var(--pp-navbar-text-color) !important;
+	opacity: 0.75;
+}
+
+/* Dropdown menu colors triggered from navbar */
+.navbar .dropdown-menu {
+	background: var(--pp-navbar-dropdown-bg-color) !important;
+}
+
+.navbar .dropdown-menu .dropdown-item {
+	color: var(--pp-navbar-dropdown-text-color) !important;
+}
